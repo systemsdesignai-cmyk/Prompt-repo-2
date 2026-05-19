@@ -61,17 +61,30 @@ jobs:
           echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
           echo "Found APK: $APK_PATH"
 
+      - name: Rename APK for release convention
+        id: rename_apk
+        run: |
+          VERSION_TAG="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            FINAL_NAME="app-prompt-${VERSION_TAG}.apk"
+          else
+            FINAL_NAME="app-prompt-${GITHUB_SHA::7}.apk"
+          fi
+          cp "${{ steps.locate_apk.outputs.path }}" "./${FINAL_NAME}"
+          echo "path=./${FINAL_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Final APK name: ${FINAL_NAME}"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: prompt-repository-debug-apk
-          path: ${{ steps.locate_apk.outputs.path }}
+          path: ${{ steps.rename_apk.outputs.path }}
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.locate_apk.outputs.path }}
+          files: ${{ steps.rename_apk.outputs.path }}
           name: Prompt Repository ${{ github.ref_name }}
           draft: false
           prerelease: false
