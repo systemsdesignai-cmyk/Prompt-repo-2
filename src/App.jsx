@@ -1205,10 +1205,10 @@ function AppMain() {
   }
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'dark' : ''} selection:bg-lime-300 dark:selection:bg-lime-900/50`}>
-      <div className="min-h-screen bg-slate-200 dark:bg-slate-950 flex justify-center font-sans text-slate-900 dark:text-slate-100 transition-colors overflow-x-hidden">
+    <div className={`h-dvh ${isDarkMode ? 'dark' : ''} selection:bg-lime-300 dark:selection:bg-lime-900/50 overflow-hidden`}>
+      <div className="h-full bg-slate-200 dark:bg-slate-950 flex justify-center font-sans text-slate-900 dark:text-slate-100 transition-colors overflow-hidden">
         
-        <div className="w-full max-w-4xl bg-slate-50 dark:bg-slate-900 min-h-screen shadow-2xl relative flex flex-col overflow-hidden">
+        <div className="w-full max-w-4xl bg-slate-50 dark:bg-slate-900 h-full shadow-2xl relative flex flex-col overflow-hidden">
           <Toast message={toastMsg} isVisible={!!toastMsg} />
           <ConfirmModal {...confirmModalData} onCancel={() => setConfirmModalData({ isOpen: false, title: '', message: '' })} />
           <ImageViewerModal imageRef={viewingImage} onClose={() => setViewingImage(null)} />
