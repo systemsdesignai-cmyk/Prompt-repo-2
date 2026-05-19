@@ -10,7 +10,9 @@
     "ci": "npm run build",
     "cap:sync": "npx cap sync android",
     "android:sync": "npx cap sync android",
-    "android:build:debug": "cd android && ./gradlew assembleDebug"
+    "android:build:debug": "cd android && ./gradlew assembleDebug",
+    "test:viewport": "playwright test",
+    "test:viewport:install": "playwright install chromium"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
@@ -28,6 +30,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.3",
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/line-clamp": "^0.4.4",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",

@@ -1,5 +1,3 @@
-import lineClamp from '@tailwindcss/line-clamp';
-
 export default {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
@@ -20,6 +18,5 @@ export default {
         'fade-in': 'fade-in 200ms ease-out'
       }
     }
-  },
-  plugins: [lineClamp]
+  }
 };

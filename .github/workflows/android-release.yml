@@ -39,6 +39,12 @@ jobs:
       - name: Validate web app
         run: npm run ci
 
+      - name: Install Playwright Chromium
+        run: npm run test:viewport:install
+
+      - name: Run viewport matrix
+        run: npm run test:viewport
+
       - name: Ensure Android platform exists
         run: |
           if [ ! -d "android/app" ]; then

@@ -145,7 +145,7 @@ const safeParseState = (raw) => {
 const Toast = ({ message, isVisible }) => {
   if (!isVisible) return null;
   return (
-    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-[90] text-sm font-medium transition-opacity duration-300">
+    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-[90] text-sm font-medium transition-opacity duration-300 max-w-[calc(100vw-2rem)]">
       <Check size={16} className="text-lime-400 dark:text-lime-500 flex-shrink-0" />
       <span className="truncate max-w-[250px]">{message}</span>
     </div>
@@ -155,8 +155,8 @@ const Toast = ({ message, isVisible }) => {
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
   if (!isOpen) return null;
   return (
-    <div className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-[80] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm p-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-in-right">
+    <div className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-[80] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-[92vw] sm:max-w-sm p-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-in-right max-h-[calc(100dvh-32px)] overflow-y-auto">
         <div className="flex items-center gap-3 mb-4 text-red-600 dark:text-red-400">
           <AlertTriangle size={24} />
           <h3 className="font-bold text-lg">{title}</h3>
@@ -194,10 +194,10 @@ const ImageViewerModal = ({ imageRef, onClose }) => {
   };
 
   return (
-    <div className="absolute inset-0 bg-slate-900/95 z-[70] flex flex-col animate-fade-in backdrop-blur-md">
-      <div className="flex justify-between items-center p-4 text-white border-b border-slate-800 flex-shrink-0">
-        <h3 className="font-bold truncate pr-4 text-lg">{imageRef.title}</h3>
-        <div className="flex gap-2">
+    <div className="absolute inset-0 bg-slate-900/95 z-[70] flex flex-col animate-fade-in backdrop-blur-md overflow-hidden">
+      <div className="flex justify-between items-center p-4 text-white border-b border-slate-800 flex-shrink-0 gap-3">
+        <h3 className="font-bold truncate pr-4 text-lg min-w-0 flex-1">{imageRef.title}</h3>
+        <div className="flex gap-2 flex-shrink-0">
           <button onClick={handleSaveImage} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-lime-400" title="Save Image">
             <Download size={24} />
           </button>
@@ -206,7 +206,7 @@ const ImageViewerModal = ({ imageRef, onClose }) => {
           </button>
         </div>
       </div>
-      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden min-h-0">
          <img src={imageRef.url} alt={imageRef.title} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl ring-2 ring-lime-500/20" />
       </div>
     </div>
@@ -226,8 +226,8 @@ const CreateFolderModal = ({ onClose, onSave }) => {
   };
 
   return (
-    <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm p-5 shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-in-right">
+    <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/70 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-[92vw] sm:max-w-sm p-5 shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-in-right max-h-[calc(100dvh-32px)] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">New Folder</h3>
           <button onClick={onClose} className="p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"><X size={20}/></button>
@@ -279,8 +279,8 @@ const CreateReferenceModal = ({ type, onClose, onSave }) => {
   };
 
   return (
-    <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm p-5 shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-in-right">
+    <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/70 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-[92vw] sm:max-w-sm p-5 shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-in-right max-h-[calc(100dvh-32px)] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">Add {type === 'image' ? 'Image' : 'Link'}</h3>
           <button onClick={onClose} className="p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"><X size={20}/></button>
@@ -409,13 +409,13 @@ const EditPromptModal = ({ prompt, onClose, onSave }) => {
   };
 
   return (
-    <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg p-5 shadow-2xl flex flex-col border border-slate-100 dark:border-slate-800 max-h-[90vh] animate-slide-in-right">
+    <div data-testid="prompt-modal" className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/70 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-[94vw] sm:max-w-lg p-5 shadow-2xl flex flex-col border border-slate-100 dark:border-slate-800 max-h-[calc(100dvh-32px)] animate-slide-in-right overflow-hidden">
         <div className="flex justify-between items-center mb-4 shrink-0">
           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{isEditing ? 'Edit Prompt' : 'New Prompt'}</h3>
           <button onClick={onClose} className="p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"><X size={20}/></button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4 flex-1 overflow-y-auto pr-1" style={hideScrollbarStyle}>
+        <form onSubmit={handleSubmit} className="space-y-4 flex-1 overflow-y-auto pr-1 min-h-0" style={hideScrollbarStyle}>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Prompt Title</label>
             <input autoFocus value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full bg-transparent border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400" placeholder="e.g., Code Refactoring Assistant" />
@@ -475,15 +475,15 @@ const EditPromptModal = ({ prompt, onClose, onSave }) => {
 
 // --- MAIN VIEWS ---
 const Header = ({ searchQuery, setSearchQuery, isDarkMode, setIsDarkMode, viewMode, setViewMode }) => (
-  <div className="bg-white dark:bg-slate-900 px-4 pt-6 pb-4 border-b border-slate-200 dark:border-slate-800 z-10 flex-shrink-0">
-    <div className="flex justify-between items-center mb-4">
-      <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+  <div className="bg-white dark:bg-slate-900 px-4 pt-6 pb-4 border-b border-slate-200 dark:border-slate-800 z-10 flex-shrink-0" style={{ paddingTop: 'calc(var(--safe-top) + 12px)', paddingLeft: 'calc(var(--safe-left) + 16px)', paddingRight: 'calc(var(--safe-right) + 16px)' }}>
+    <div className="flex justify-between items-center mb-4 gap-3">
+      <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2 min-w-0 flex-1">
         <div className="w-6 h-6 bg-lime-400 dark:bg-lime-500 rounded-md flex items-center justify-center">
           <span className="text-slate-900 text-xs font-black">PR</span>
         </div>
-        Prompt Repository
+        <span className="truncate">Prompt Repository</span>
       </h1>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-shrink-0">
         <button 
           onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} 
           className="p-2 text-slate-400 hover:text-lime-600 dark:hover:text-lime-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
@@ -547,7 +547,7 @@ const FolderList = ({ currentFolders, setActiveFolderId, searchQuery, onDeleteFo
   return (
     <div className="space-y-2">
       {!searchQuery && <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 mt-2">Folders</p>}
-      <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
+      <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
         {currentFolders.map(folder => {
           const colorCls = getColorClasses(folder.color);
           const isDragOver = dragOverId === folder.id;
@@ -591,7 +591,7 @@ const ReferenceList = ({ currentReferences, onDeleteReference, onViewImage, view
   return (
     <div className="space-y-2 pt-2">
       <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Assets & References</p>
-      <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
+      <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" : "flex flex-col gap-2"}>
         {currentReferences.map(ref => (
           <div key={ref.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-sm flex items-center justify-between group">
             {ref.type === 'image' ? (
@@ -685,12 +685,12 @@ const PromptDetailModal = ({
   const promptVersions = versions.filter(v => v.promptId === selectedPrompt.id).sort((a, b) => b.versionNum - a.versionNum);
 
   return (
-    <div className="absolute inset-0 bg-white dark:bg-slate-900 z-30 flex flex-col animate-slide-in-right">
-      <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
-        <button onClick={() => setSelectedPrompt(null)} className="p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+    <div className="absolute inset-0 bg-white dark:bg-slate-900 z-30 flex flex-col animate-slide-in-right overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0 gap-2">
+        <button onClick={() => setSelectedPrompt(null)} className="p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex-shrink-0">
           <ArrowLeft size={20} />
         </button>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap justify-end min-w-0">
           <button onClick={() => onTogglePin(selectedPrompt.id)} title="Pin to Top" className="p-2 text-slate-400 hover:text-lime-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition-colors">
             <Pin size={18} className={selectedPrompt.isPinned ? "fill-lime-500 text-lime-500 dark:fill-lime-400 dark:text-lime-400" : ""} />
           </button>
@@ -706,8 +706,8 @@ const PromptDetailModal = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-24" style={hideScrollbarStyle}>
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex-1 overflow-y-auto pb-24 min-h-0" style={{ ...hideScrollbarStyle, paddingBottom: 'calc(var(--safe-bottom) + 96px)' }}>
+        <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2 mb-3">
             <span className={`text-xs font-bold px-2 py-0.5 rounded border uppercase tracking-wide ${getColorClasses(selectedPrompt.colorLabel)}`}>{selectedPrompt.colorLabel}</span>
             <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1">
@@ -721,17 +721,17 @@ const PromptDetailModal = ({
           </div>
         </div>
 
-        <div className="flex px-4 pt-2 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex px-3 sm:px-4 pt-2 border-b border-slate-200 dark:border-slate-800">
           <button onClick={() => setActiveTab('content')} className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'content' ? 'border-lime-500 dark:border-lime-400 text-lime-600 dark:text-lime-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Prompt Body</button>
           <button onClick={() => setActiveTab('history')} className={`flex-1 pb-3 text-sm font-semibold border-b-2 flex justify-center gap-2 transition-colors ${activeTab === 'history' ? 'border-lime-500 dark:border-lime-400 text-lime-600 dark:text-lime-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
             Version History <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'history' ? 'bg-lime-100 dark:bg-lime-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>{promptVersions.length}</span>
           </button>
         </div>
 
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           {activeTab === 'content' ? (
             <div>
-              <div className="bg-slate-50 dark:bg-slate-950 rounded-xl p-4 border border-slate-200 dark:border-slate-800 relative group">
+              <div className="bg-slate-50 dark:bg-slate-950 rounded-xl p-4 border border-slate-200 dark:border-slate-800 relative group overflow-hidden">
                 <p className="text-slate-800 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-mono">{selectedPrompt.content}</p>
                 <button onClick={() => handleCopy(selectedPrompt.content)} className="absolute top-3 right-3 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-slate-600 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 transition-colors"><Copy size={16} /></button>
               </div>
@@ -756,8 +756,8 @@ const PromptDetailModal = ({
                     <div className="flex flex-col items-center pt-1">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 text-xs font-bold ${idx === 0 ? 'bg-lime-100 dark:bg-lime-900/40 border-lime-500 dark:border-lime-400 text-lime-700 dark:text-lime-400' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400'}`}>v{v.versionNum}</div>
                     </div>
-                    <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-                      <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm min-w-0">
+                      <div className="flex justify-between items-start mb-2 gap-2">
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{formatDate(v.timestamp)}</span>
                         {idx === 0 && <span className="text-[10px] uppercase font-bold tracking-wider text-lime-700 dark:text-lime-400 bg-lime-100 dark:bg-lime-900/30 px-2 py-0.5 rounded">Active</span>}
                       </div>
@@ -780,7 +780,7 @@ const PromptDetailModal = ({
           )}
         </div>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)', paddingLeft: 'calc(var(--safe-left) + 16px)', paddingRight: 'calc(var(--safe-right) + 16px)' }}>
         <button onClick={() => handleCopy(selectedPrompt.content)} className="w-full bg-lime-400 dark:bg-lime-500 text-slate-900 font-bold py-3.5 rounded-xl shadow-md hover:bg-lime-500 dark:hover:bg-lime-400 active:scale-[0.98] transition-colors flex items-center justify-center gap-2 text-sm">
           <Copy size={18} /> Copy Latest Prompt
         </button>
@@ -1082,7 +1082,7 @@ function AppMain() {
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark' : ''} selection:bg-lime-300 dark:selection:bg-lime-900/50`}>
-      <div className="min-h-screen bg-slate-200 dark:bg-slate-950 flex justify-center font-sans text-slate-900 dark:text-slate-100 transition-colors">
+      <div className="min-h-screen bg-slate-200 dark:bg-slate-950 flex justify-center font-sans text-slate-900 dark:text-slate-100 transition-colors overflow-x-hidden">
         
         <div className="w-full max-w-4xl bg-slate-50 dark:bg-slate-900 min-h-screen shadow-2xl relative flex flex-col overflow-hidden">
           <Toast message={toastMsg} isVisible={!!toastMsg} />
@@ -1110,7 +1110,7 @@ function AppMain() {
               />
               <Breadcrumbs searchQuery={searchQuery} activeFolderId={activeFolderId} setActiveFolderId={setActiveFolderId} breadcrumbs={breadcrumbs} />
               
-              <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4 pb-24 md:px-8 md:py-6" style={hideScrollbarStyle}>
+              <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4 pb-24 md:px-8 md:py-6" style={{ ...hideScrollbarStyle, paddingLeft: 'calc(var(--safe-left) + 16px)', paddingRight: 'calc(var(--safe-right) + 16px)', paddingBottom: 'calc(var(--safe-bottom) + 112px)' }}>
                 {(searchQuery && currentPrompts.length === 0 && currentFolders.length === 0 && currentReferences.length === 0) && (
                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
                      <Search size={48} strokeWidth={1} className="mb-4 text-slate-300 dark:text-slate-700" />
@@ -1125,24 +1125,24 @@ function AppMain() {
 
               {/* Floating Action Menu */}
               {isFabOpen && (
-                <div className="absolute bottom-24 right-6 flex flex-col gap-3 z-20">
-                  <button onClick={() => { setCreateModalType('link'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-end gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors">
+                <div className="absolute flex flex-col gap-3 z-20 max-w-[calc(100vw-32px)] items-end" style={{ right: 'max(16px, calc(var(--safe-right) + 8px))', bottom: 'calc(var(--safe-bottom) + 92px)' }}>
+                  <button data-testid="fab-create-link" onClick={() => { setCreateModalType('link'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors max-w-[min(82vw,280px)]">
                     Add Link Ref <ExternalLink size={18} />
                   </button>
-                  <button onClick={() => { setCreateModalType('image'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-end gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors">
+                  <button data-testid="fab-create-image" onClick={() => { setCreateModalType('image'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors max-w-[min(82vw,280px)]">
                     Add Image Ref <Camera size={18} />
                   </button>
-                  <button onClick={() => { setCreateModalType('folder'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-end gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors">
+                  <button data-testid="fab-create-folder" onClick={() => { setCreateModalType('folder'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors max-w-[min(82vw,280px)]">
                     Create Folder <Folder size={18} />
                   </button>
-                  <button onClick={() => { setCreateModalType('prompt'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-end gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors">
+                  <button data-testid="fab-create-prompt" onClick={() => { setCreateModalType('prompt'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors max-w-[min(82vw,280px)]">
                     Create Prompt <FileText size={18} />
                   </button>
                 </div>
               )}
 
               {isFabOpen && <div className="absolute inset-0 z-10 bg-slate-900/10 dark:bg-slate-900/40" onClick={() => setIsFabOpen(false)} />}
-              <button onClick={() => setIsFabOpen(!isFabOpen)} className="absolute bottom-6 right-6 w-14 h-14 bg-lime-400 dark:bg-lime-500 text-slate-900 rounded-full shadow-lg flex items-center justify-center hover:bg-lime-500 dark:hover:bg-lime-400 active:scale-90 transition-all z-20">
+              <button data-testid="fab-toggle" onClick={() => setIsFabOpen(!isFabOpen)} className="absolute bottom-6 right-4 sm:right-6 w-14 h-14 bg-lime-400 dark:bg-lime-500 text-slate-900 rounded-full shadow-lg flex items-center justify-center hover:bg-lime-500 dark:hover:bg-lime-400 active:scale-90 transition-all z-20" style={{ right: 'max(16px, calc(var(--safe-right) + 8px))', bottom: 'calc(var(--safe-bottom) + 16px)' }}>
                 <Plus size={24} className={`transition-transform duration-300 ${isFabOpen ? 'rotate-45' : ''}`} />
               </button>
             </div>
