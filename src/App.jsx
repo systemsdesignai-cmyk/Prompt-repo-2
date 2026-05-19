@@ -2,13 +2,16 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { IonApp } from '@ionic/react';
 import { Clipboard } from '@capacitor/clipboard';
 import { Preferences } from '@capacitor/preferences';
+import { App as CapApp } from '@capacitor/app';
 import { 
   Folder, FileText, Search, Plus, ChevronRight, 
   Copy, History, Tag, ArrowLeft, Clock, 
   Check, X, Moon, Sun, Trash2, Edit2, AlertTriangle,
   Mic, MicOff, Pin, FilePlus, Camera, ExternalLink, Download,
-  LayoutGrid, List
+  LayoutGrid, List, Settings, RefreshCw, Github
 } from 'lucide-react';
+
+// ... (ErrorBoundary and other utils remain same)
 
 // --- ERROR BOUNDARY ---
 class ErrorBoundary extends React.Component {
@@ -474,7 +477,120 @@ const EditPromptModal = ({ prompt, onClose, onSave }) => {
 };
 
 // --- MAIN VIEWS ---
-const Header = ({ searchQuery, setSearchQuery, isDarkMode, setIsDarkMode, viewMode, setViewMode }) => (
+const SettingsModal = ({ onClose }) => {
+  const [appInfo, setAppInfo] = useState({ version: '...', build: '...' });
+  const [latestRelease, setLatestRelease] = useState(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const [error, setError] = useState(null);
+
+  const GITHUB_REPO = 'systemsdesignai-cmyk/Prompt-repo-2';
+
+  useEffect(() => {
+    const getInfo = async () => {
+      try {
+        const info = await CapApp.getInfo();
+        setAppInfo(info);
+      } catch (err) {
+        console.error('Failed to get app info:', err);
+      }
+    };
+    getInfo();
+  }, []);
+
+  const checkForUpdate = async () => {
+    // TODO: If this repo remains private, implement a secure proxy (e.g. Cloudflare Worker)
+    // to hide the GitHub PAT instead of calling the public API directly.
+    setIsChecking(true);
+    setError(null);
+    try {
+      // Fetch latest release from GitHub API
+      const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+      if (!response.ok) throw new Error('Failed to fetch latest release');
+      
+      const data = await response.json();
+      const latestVersion = data.tag_name.replace('v', '');
+      
+      // Basic version comparison (v1.0.0 vs 1.0.0)
+      if (latestVersion !== appInfo.version) {
+        setLatestRelease(data);
+      } else {
+        setTimeout(() => setError("App is already up to date."), 500);
+      }
+    } catch (err) {
+      console.error('Failed to check for update:', err);
+      setError("Failed to check GitHub for updates.");
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const downloadUpdate = () => {
+    if (!latestRelease) return;
+    
+    // Find the APK asset in the release
+    const apkAsset = latestRelease.assets.find(asset => asset.name.endsWith('.apk'));
+    const downloadUrl = apkAsset ? apkAsset.browser_download_url : latestRelease.html_url;
+    
+    window.open(downloadUrl, '_blank');
+  };
+
+  return (
+    <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/70 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-[92vw] sm:max-w-sm p-5 shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-in-right max-h-[calc(100dvh-32px)] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">Settings</h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"><X size={20}/></button>
+        </div>
+        
+        <div className="space-y-6">
+          <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+            <p className="text-xs font-bold text-slate-400 uppercase mb-2">App Information</p>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-600 dark:text-slate-400">Current Version</span>
+              <span className="font-mono font-bold text-slate-900 dark:text-white">{appInfo.version} ({appInfo.build})</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Github size={14} className="text-slate-400" />
+              <p className="text-xs font-bold text-slate-400 uppercase">GitHub Release</p>
+            </div>
+            
+            {latestRelease ? (
+              <div className="bg-lime-50 dark:bg-lime-900/20 border border-lime-200 dark:border-lime-800 p-4 rounded-xl">
+                <p className="text-sm font-bold text-lime-700 dark:text-lime-400 mb-1">Update Available: {latestRelease.tag_name}</p>
+                <p className="text-[10px] text-lime-600 dark:text-lime-500 mb-4 line-clamp-2">{latestRelease.name || 'New version available on GitHub'}</p>
+                <button 
+                  onClick={downloadUpdate}
+                  className="w-full bg-lime-400 dark:bg-lime-500 text-slate-900 font-bold py-2.5 rounded-xl hover:bg-lime-500 dark:hover:bg-lime-400 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download size={18} /> Download APK
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={checkForUpdate}
+                disabled={isChecking}
+                className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isChecking ? <RefreshCw size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                {isChecking ? 'Check GitHub for Updates' : 'Check for Updates'}
+              </button>
+            )}
+            {error && <p className="text-center text-xs font-medium text-slate-500 dark:text-slate-400 mt-2">{error}</p>}
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-[10px] text-center text-slate-400">Updates are fetched directly from the GitHub repository releases.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Header = ({ searchQuery, setSearchQuery, isDarkMode, setIsDarkMode, viewMode, setViewMode, onOpenSettings }) => (
   <div className="bg-white dark:bg-slate-900 px-4 pt-6 pb-4 border-b border-slate-200 dark:border-slate-800 z-10 flex-shrink-0" style={{ paddingTop: 'calc(var(--safe-top) + 12px)', paddingLeft: 'calc(var(--safe-left) + 16px)', paddingRight: 'calc(var(--safe-right) + 16px)' }}>
     <div className="flex justify-between items-center mb-4 gap-3">
       <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2 min-w-0 flex-1">
@@ -497,6 +613,13 @@ const Header = ({ searchQuery, setSearchQuery, isDarkMode, setIsDarkMode, viewMo
           title="Toggle Dark/Light Mode"
         >
           {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+        <button 
+          onClick={onOpenSettings} 
+          className="p-2 text-slate-400 hover:text-lime-600 dark:hover:text-lime-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+          title="Settings"
+        >
+          <Settings size={20} />
         </button>
       </div>
     </div>
@@ -805,6 +928,7 @@ function AppMain() {
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
   const [isFabOpen, setIsFabOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const [createModalType, setCreateModalType] = useState(null);
   const [promptToEdit, setPromptToEdit] = useState(null);
@@ -1090,6 +1214,7 @@ function AppMain() {
           <ImageViewerModal imageRef={viewingImage} onClose={() => setViewingImage(null)} />
 
           {/* Modals */}
+          {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
           {createModalType === 'folder' && <CreateFolderModal onClose={() => setCreateModalType(null)} onSave={handleCreateFolder} />}
           {(createModalType === 'image' || createModalType === 'link') && <CreateReferenceModal type={createModalType} onClose={() => setCreateModalType(null)} onSave={handleCreateReference} />}
           {(createModalType === 'prompt' || promptToEdit) && <EditPromptModal prompt={promptToEdit} onClose={() => { setCreateModalType(null); setPromptToEdit(null); }} onSave={handleSavePrompt} />}
@@ -1107,6 +1232,7 @@ function AppMain() {
                 searchQuery={searchQuery} setSearchQuery={setSearchQuery} 
                 isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} 
                 viewMode={viewMode} setViewMode={setViewMode} 
+                onOpenSettings={() => setIsSettingsOpen(true)}
               />
               <Breadcrumbs searchQuery={searchQuery} activeFolderId={activeFolderId} setActiveFolderId={setActiveFolderId} breadcrumbs={breadcrumbs} />
               
