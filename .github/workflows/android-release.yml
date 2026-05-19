@@ -64,7 +64,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: reflection-ladder-debug-apk
+          name: prompt-repository-debug-apk
           path: ${{ steps.locate_apk.outputs.path }}
 
       - name: Create GitHub Release
@@ -72,7 +72,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.locate_apk.outputs.path }}
-          name: Reflection Ladder ${{ github.ref_name }}
+          name: Prompt Repository ${{ github.ref_name }}
           draft: false
           prerelease: false
         env:
