@@ -8,8 +8,17 @@ import {
   Copy, History, Tag, ArrowLeft, Clock, 
   Check, X, Moon, Sun, Trash2, Edit2, AlertTriangle,
   Mic, MicOff, Pin, FilePlus, Camera, ExternalLink, Download,
-  LayoutGrid, List, Settings, RefreshCw, Github
+  LayoutGrid, List, Settings, RefreshCw, Github,
+  GitBranch, BookOpen,
 } from 'lucide-react';
+
+import {
+  CreateSkillModal, EditSkillModal, SkillDetailModal, SkillList,
+} from './SkillsSystem.jsx';
+import {
+  CreateSequenceModal, EditSequenceModal, SequenceDetailModal, SequenceList,
+  generateSeqId,
+} from './SequencesSystem.jsx';
 
 // ... (ErrorBoundary and other utils remain same)
 
@@ -109,7 +118,60 @@ const MOCK_VERSIONS = [
   { id: 'v1_p2', promptId: 'p2', versionNum: 1, timestamp: '2026-02-05T09:10:00Z', changeNote: 'Initial draft', changeReason: 'Initial setup.', content: 'Create 3 detailed user personas for a [INSERT PRODUCT TYPE]. Include demographics, pain points, and goals.' },
 ];
 
-const APP_STATE_KEY = 'prompt_repository_state_v1';
+const MOCK_SEQUENCES = [
+  {
+    id: 'seq1',
+    title: 'Landing Page Generation',
+    goal: 'Generate a complete frontend landing page from scratch',
+    description: 'A structured workflow for creating production-ready landing pages',
+    tags: ['frontend', 'landing-page', 'ui'],
+    folderId: 'f1',
+    colorLabel: 'blue',
+    status: 'active',
+    isPinned: false,
+    currentVersion: 1,
+    createdAt: '2026-05-10T10:00:00Z',
+    updatedAt: '2026-05-14T10:00:00Z',
+    steps: [
+      {
+        id: 'step1_1', stepNumber: 1, title: 'Define UX Personas',
+        promptMode: 'linked', linkedPromptId: 'p2', inlinePrompt: '',
+        references: [], expectedOutput: 'User persona doc with demographics and pain points', notes: '', tags: [],
+      },
+      {
+        id: 'step1_2', stepNumber: 2, title: 'Generate Component Structure',
+        promptMode: 'linked', linkedPromptId: 'p1', inlinePrompt: '',
+        references: [], expectedOutput: 'React component tree for the landing page', notes: '', tags: [],
+      },
+    ],
+    notes: '',
+    linkedSkillIds: [],
+    linkedPromptIds: ['p1', 'p2'],
+  },
+];
+
+const MOCK_SKILLS = [
+  {
+    id: 'skill1',
+    title: 'React Native Best Practices',
+    description: 'Comprehensive methodology for building performant React Native applications',
+    category: 'Frontend Design',
+    markdownContent: '# React Native Best Practices\n\n## Component Architecture\n\n- Use functional components with hooks\n- Keep components small and focused\n- Separate business logic from UI\n\n## Performance\n\n- Use FlatList for long lists\n- Memoize expensive computations with useMemo\n- Avoid inline function definitions in render\n\n## Styling\n\n- Use StyleSheet.create for performance\n- Consider NativeWind for Tailwind-style classes\n- Test on both iOS and Android',
+    tags: ['react-native', 'mobile', 'performance'],
+    folderId: null,
+    colorLabel: 'orange',
+    isPinned: true,
+    currentVersion: 1,
+    createdAt: '2026-05-01T10:00:00Z',
+    updatedAt: '2026-05-14T10:00:00Z',
+    notes: '',
+    linkedPromptIds: ['p1'],
+    linkedSequenceIds: [],
+    references: [],
+  },
+];
+
+const APP_STATE_KEY = 'prompt_repository_state_v2';
 
 const DEFAULT_APP_STATE = {
   settings: {
@@ -118,11 +180,18 @@ const DEFAULT_APP_STATE = {
   },
   folders: MOCK_FOLDERS,
   prompts: MOCK_PROMPTS,
-  versions: MOCK_VERSIONS,
+  versions: [
+    ...MOCK_VERSIONS,
+    { id: 'vs_seq1', entityType: 'sequence', entityId: 'seq1', versionNum: 1, timestamp: '2026-05-10T10:00:00Z', changeNote: 'Initial sequence creation.', changeReason: 'Initial setup.' },
+    { id: 'vs_skill1', entityType: 'skill', entityId: 'skill1', versionNum: 1, timestamp: '2026-05-01T10:00:00Z', changeNote: 'Initial skill creation.', changeReason: 'Initial setup.' },
+  ],
   references: MOCK_REFERENCES,
+  sequences: MOCK_SEQUENCES,
+  skills: MOCK_SKILLS,
   uiState: {
     activeFolderId: null,
     searchQuery: '',
+    activeContentType: 'all',
   }
 };
 
@@ -130,13 +199,24 @@ const safeParseState = (raw) => {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
+    // Migrate v1 versions: add entityType/entityId from promptId
+    const rawVersions = Array.isArray(parsed?.versions) ? parsed.versions : DEFAULT_APP_STATE.versions;
+    const versions = rawVersions.map((v) =>
+      v.entityType ? v : { ...v, entityType: 'prompt', entityId: v.promptId }
+    );
     return {
       settings: parsed?.settings ?? DEFAULT_APP_STATE.settings,
       folders: Array.isArray(parsed?.folders) ? parsed.folders : DEFAULT_APP_STATE.folders,
       prompts: Array.isArray(parsed?.prompts) ? parsed.prompts : DEFAULT_APP_STATE.prompts,
-      versions: Array.isArray(parsed?.versions) ? parsed.versions : DEFAULT_APP_STATE.versions,
+      versions,
       references: Array.isArray(parsed?.references) ? parsed.references : DEFAULT_APP_STATE.references,
-      uiState: parsed?.uiState ?? DEFAULT_APP_STATE.uiState,
+      sequences: Array.isArray(parsed?.sequences) ? parsed.sequences : DEFAULT_APP_STATE.sequences,
+      skills: Array.isArray(parsed?.skills) ? parsed.skills : DEFAULT_APP_STATE.skills,
+      uiState: {
+        activeFolderId: parsed?.uiState?.activeFolderId ?? null,
+        searchQuery: parsed?.uiState?.searchQuery ?? '',
+        activeContentType: parsed?.uiState?.activeContentType ?? 'all',
+      },
     };
   } catch (err) {
     console.error('Failed to parse persisted state:', err);
@@ -590,7 +670,15 @@ const SettingsModal = ({ onClose }) => {
   );
 };
 
-const Header = ({ searchQuery, setSearchQuery, isDarkMode, setIsDarkMode, viewMode, setViewMode, onOpenSettings }) => (
+const CONTENT_TYPES = [
+  { id: 'all', label: 'All' },
+  { id: 'prompts', label: 'Prompts' },
+  { id: 'sequences', label: 'Sequences' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'references', label: 'References' },
+];
+
+const Header = ({ searchQuery, setSearchQuery, isDarkMode, setIsDarkMode, viewMode, setViewMode, onOpenSettings, activeContentType, setActiveContentType }) => (
   <div className="bg-white dark:bg-slate-900 px-4 pt-6 pb-4 border-b border-slate-200 dark:border-slate-800 z-10 flex-shrink-0" style={{ paddingTop: 'calc(var(--safe-top) + 12px)', paddingLeft: 'calc(var(--safe-left) + 16px)', paddingRight: 'calc(var(--safe-right) + 16px)' }}>
     <div className="flex justify-between items-center mb-4 gap-3">
       <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2 min-w-0 flex-1">
@@ -624,15 +712,32 @@ const Header = ({ searchQuery, setSearchQuery, isDarkMode, setIsDarkMode, viewMo
       </div>
     </div>
     
-    <div className="relative">
+    <div className="relative mb-3">
       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
       <input 
         type="text" 
-        placeholder="Search prompts, tags, images or links..." 
+        placeholder="Search prompts, sequences, skills, tags…" 
         className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 text-sm transition-colors"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
       />
+    </div>
+
+    {/* Content-type filter pills */}
+    <div className="flex gap-2 overflow-x-auto pb-0.5" style={hideScrollbarStyle}>
+      {CONTENT_TYPES.map((ct) => (
+        <button
+          key={ct.id}
+          onClick={() => setActiveContentType(ct.id)}
+          className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+            activeContentType === ct.id
+              ? 'bg-lime-400 dark:bg-lime-500 text-slate-900'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          {ct.label}
+        </button>
+      ))}
     </div>
   </div>
 );
@@ -805,7 +910,10 @@ const PromptDetailModal = ({
   onTogglePin, onEditRequest, onDeleteRequest, onRestoreVersion, onDuplicateRequest
 }) => {
   const [activeTab, setActiveTab] = useState('content');
-  const promptVersions = versions.filter(v => v.promptId === selectedPrompt.id).sort((a, b) => b.versionNum - a.versionNum);
+  const promptVersions = versions.filter(v =>
+    (v.entityType === 'prompt' && v.entityId === selectedPrompt.id) ||
+    (!v.entityType && v.promptId === selectedPrompt.id)
+  ).sort((a, b) => b.versionNum - a.versionNum);
 
   return (
     <div className="absolute inset-0 bg-white dark:bg-slate-900 z-30 flex flex-col animate-slide-in-right overflow-hidden">
@@ -922,16 +1030,25 @@ function AppMain() {
   const [prompts, setPrompts] = useState(DEFAULT_APP_STATE.prompts);
   const [references, setReferences] = useState(DEFAULT_APP_STATE.references);
   const [versions, setVersions] = useState(DEFAULT_APP_STATE.versions);
+  const [sequences, setSequences] = useState(DEFAULT_APP_STATE.sequences);
+  const [skills, setSkills] = useState(DEFAULT_APP_STATE.skills);
 
   const [activeFolderId, setActiveFolderId] = useState(DEFAULT_APP_STATE.uiState.activeFolderId);
   const [searchQuery, setSearchQuery] = useState(DEFAULT_APP_STATE.uiState.searchQuery);
+  const [activeContentType, setActiveContentType] = useState(DEFAULT_APP_STATE.uiState.activeContentType);
+
   const [selectedPrompt, setSelectedPrompt] = useState(null);
+  const [selectedSequence, setSelectedSequence] = useState(null);
+  const [selectedSkill, setSelectedSkill] = useState(null);
+
   const [toastMsg, setToastMsg] = useState('');
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const [createModalType, setCreateModalType] = useState(null);
   const [promptToEdit, setPromptToEdit] = useState(null);
+  const [sequenceToEdit, setSequenceToEdit] = useState(null);
+  const [skillToEdit, setSkillToEdit] = useState(null);
   const [confirmModalData, setConfirmModalData] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [viewingImage, setViewingImage] = useState(null);
 
@@ -947,8 +1064,11 @@ function AppMain() {
           setPrompts(state.prompts);
           setVersions(state.versions);
           setReferences(state.references);
+          setSequences(state.sequences);
+          setSkills(state.skills);
           setActiveFolderId(state.uiState?.activeFolderId ?? null);
           setSearchQuery(state.uiState?.searchQuery ?? '');
+          setActiveContentType(state.uiState?.activeContentType ?? 'all');
         }
       } catch (err) {
         console.error('Failed to hydrate local state:', err);
@@ -968,7 +1088,9 @@ function AppMain() {
         prompts,
         versions,
         references,
-        uiState: { activeFolderId, searchQuery },
+        sequences,
+        skills,
+        uiState: { activeFolderId, searchQuery, activeContentType },
       };
       try {
         await Preferences.set({ key: APP_STATE_KEY, value: JSON.stringify(nextState) });
@@ -977,7 +1099,7 @@ function AppMain() {
       }
     };
     persist();
-  }, [isHydrated, isDarkMode, viewMode, folders, prompts, versions, references, activeFolderId, searchQuery]);
+  }, [isHydrated, isDarkMode, viewMode, folders, prompts, versions, references, sequences, skills, activeFolderId, searchQuery, activeContentType]);
 
   // Data Filtering & Sorting
   const currentFolders = useMemo(() => {
@@ -989,6 +1111,7 @@ function AppMain() {
   }, [activeFolderId, searchQuery, folders]);
 
   const currentPrompts = useMemo(() => {
+    if (activeContentType !== 'all' && activeContentType !== 'prompts') return [];
     let filtered = prompts;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -1002,9 +1125,10 @@ function AppMain() {
       filtered = filtered.filter(p => p.folderId === activeFolderId);
     }
     return [...filtered].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
-  }, [activeFolderId, searchQuery, prompts]);
+  }, [activeFolderId, searchQuery, prompts, activeContentType]);
 
   const currentReferences = useMemo(() => {
+    if (activeContentType !== 'all' && activeContentType !== 'references') return [];
     let filtered = references;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -1016,7 +1140,46 @@ function AppMain() {
       filtered = filtered.filter(r => r.folderId === activeFolderId);
     }
     return filtered;
-  }, [activeFolderId, searchQuery, references, folders]);
+  }, [activeFolderId, searchQuery, references, folders, activeContentType]);
+
+  const currentSequences = useMemo(() => {
+    if (activeContentType !== 'all' && activeContentType !== 'sequences') return [];
+    let filtered = sequences;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(s =>
+        s.title?.toLowerCase().includes(q) ||
+        s.goal?.toLowerCase().includes(q) ||
+        s.description?.toLowerCase().includes(q) ||
+        (s.tags && s.tags.some(t => t.toLowerCase().includes(q))) ||
+        (s.steps && s.steps.some(step =>
+          step.title?.toLowerCase().includes(q) ||
+          step.inlinePrompt?.toLowerCase().includes(q)
+        ))
+      );
+    } else if (!searchQuery) {
+      filtered = filtered.filter(s => s.folderId === activeFolderId || (!s.folderId && activeFolderId === null));
+    }
+    return [...filtered].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+  }, [activeFolderId, searchQuery, sequences, activeContentType]);
+
+  const currentSkills = useMemo(() => {
+    if (activeContentType !== 'all' && activeContentType !== 'skills') return [];
+    let filtered = skills;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(s =>
+        s.title?.toLowerCase().includes(q) ||
+        s.description?.toLowerCase().includes(q) ||
+        s.category?.toLowerCase().includes(q) ||
+        s.markdownContent?.toLowerCase().includes(q) ||
+        (s.tags && s.tags.some(t => t.toLowerCase().includes(q)))
+      );
+    } else if (!searchQuery) {
+      filtered = filtered.filter(s => s.folderId === activeFolderId || (!s.folderId && activeFolderId === null));
+    }
+    return [...filtered].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+  }, [activeFolderId, searchQuery, skills, activeContentType]);
 
   const breadcrumbs = useMemo(() => {
     const crumbs = [];
@@ -1094,12 +1257,188 @@ function AppMain() {
     const timestamp = new Date().toISOString();
     
     const newPrompt = { ...prompt, id: newId, title: `${prompt.title} (Copy)`, currentVersion: 1, lastUpdated: timestamp };
-    const newVersion = { id: generateId('v'), promptId: newId, versionNum: 1, timestamp, changeNote: 'Duplicated from existing prompt.', changeReason: 'User initiated duplicate action.', content: prompt.content };
+    const newVersion = { id: generateId('v'), entityType: 'prompt', entityId: newId, promptId: newId, versionNum: 1, timestamp, changeNote: 'Duplicated from existing prompt.', changeReason: 'User initiated duplicate action.', content: prompt.content };
     
     setPrompts((prev) => [...prev, newPrompt]);
     setVersions((prev) => [...prev, newVersion]);
     showToast('Prompt duplicated');
   }, [showToast]);
+
+  // --- Sequence handlers ---
+  const handleCreateSequence = useCallback((data) => {
+    const timestamp = new Date().toISOString();
+    const seqId = generateSeqId('seq');
+    const newSeq = {
+      id: seqId,
+      folderId: activeFolderId,
+      title: data.title,
+      goal: data.goal,
+      description: data.description || '',
+      tags: data.tags || [],
+      colorLabel: data.colorLabel || 'blue',
+      status: data.status || 'draft',
+      isPinned: false,
+      currentVersion: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      steps: [],
+      notes: '',
+      linkedSkillIds: [],
+      linkedPromptIds: [],
+    };
+    const initVersion = {
+      id: generateSeqId('sv'),
+      entityType: 'sequence',
+      entityId: seqId,
+      versionNum: 1,
+      timestamp,
+      changeNote: 'Initial sequence creation.',
+      changeReason: 'Initial setup.',
+    };
+    setSequences((prev) => [...prev, newSeq]);
+    setVersions((prev) => [...prev, initVersion]);
+    setCreateModalType(null);
+    showToast('Sequence created');
+  }, [activeFolderId, showToast]);
+
+  const handleSaveSequence = useCallback((data) => {
+    const timestamp = new Date().toISOString();
+    const newVersionNum = sequenceToEdit.currentVersion + 1;
+    const updated = {
+      ...sequenceToEdit,
+      title: data.title,
+      goal: data.goal,
+      description: data.description,
+      tags: data.tags,
+      colorLabel: data.colorLabel,
+      status: data.status,
+      steps: data.steps,
+      notes: data.notes,
+      currentVersion: newVersionNum,
+      updatedAt: timestamp,
+    };
+    const newVersionRecord = {
+      id: generateSeqId('sv'),
+      entityType: 'sequence',
+      entityId: sequenceToEdit.id,
+      versionNum: newVersionNum,
+      timestamp,
+      changeNote: data.changeNote,
+      changeReason: data.changeReason,
+    };
+    setSequences((prev) => prev.map((s) => s.id === sequenceToEdit.id ? updated : s));
+    setVersions((prev) => [...prev, newVersionRecord]);
+    setSelectedSequence(updated);
+    setSequenceToEdit(null);
+    showToast(`Sequence saved as v${newVersionNum}`);
+  }, [sequenceToEdit, showToast]);
+
+  const handleTogglePinSequence = useCallback((id) => {
+    setSequences((prev) => prev.map((s) => s.id === id ? { ...s, isPinned: !s.isPinned } : s));
+    setSelectedSequence((prev) => prev?.id === id ? { ...prev, isPinned: !prev.isPinned } : prev);
+  }, []);
+
+  const requestDeleteSequence = useCallback((seq) => {
+    setConfirmModalData({
+      isOpen: true,
+      title: 'Delete Sequence',
+      message: `Are you sure you want to delete "${seq.title}"?`,
+      onConfirm: () => {
+        setSequences((prev) => prev.filter((s) => s.id !== seq.id));
+        setVersions((prev) => prev.filter((v) => !(v.entityType === 'sequence' && v.entityId === seq.id)));
+        if (selectedSequence?.id === seq.id) setSelectedSequence(null);
+        setConfirmModalData({ isOpen: false, title: '', message: '' });
+        showToast('Sequence deleted');
+      },
+    });
+  }, [selectedSequence, showToast]);
+
+  // --- Skill handlers ---
+  const handleCreateSkill = useCallback((data) => {
+    const timestamp = new Date().toISOString();
+    const skillId = generateSeqId('skill');
+    const newSkill = {
+      id: skillId,
+      folderId: activeFolderId,
+      title: data.title,
+      description: data.description || '',
+      category: data.category || 'Custom',
+      markdownContent: data.markdownContent || '',
+      tags: data.tags || [],
+      colorLabel: data.colorLabel || 'purple',
+      isPinned: false,
+      currentVersion: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      notes: '',
+      linkedPromptIds: [],
+      linkedSequenceIds: [],
+      references: [],
+    };
+    const initVersion = {
+      id: generateSeqId('skv'),
+      entityType: 'skill',
+      entityId: skillId,
+      versionNum: 1,
+      timestamp,
+      changeNote: 'Initial skill creation.',
+      changeReason: 'Initial setup.',
+    };
+    setSkills((prev) => [...prev, newSkill]);
+    setVersions((prev) => [...prev, initVersion]);
+    setCreateModalType(null);
+    showToast('Skill created');
+  }, [activeFolderId, showToast]);
+
+  const handleSaveSkill = useCallback((data) => {
+    const timestamp = new Date().toISOString();
+    const newVersionNum = skillToEdit.currentVersion + 1;
+    const updated = {
+      ...skillToEdit,
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      markdownContent: data.markdownContent,
+      tags: data.tags,
+      colorLabel: data.colorLabel,
+      currentVersion: newVersionNum,
+      updatedAt: timestamp,
+    };
+    const newVersionRecord = {
+      id: generateSeqId('skv'),
+      entityType: 'skill',
+      entityId: skillToEdit.id,
+      versionNum: newVersionNum,
+      timestamp,
+      changeNote: data.changeNote,
+      changeReason: data.changeReason,
+    };
+    setSkills((prev) => prev.map((s) => s.id === skillToEdit.id ? updated : s));
+    setVersions((prev) => [...prev, newVersionRecord]);
+    setSelectedSkill(updated);
+    setSkillToEdit(null);
+    showToast(`Skill saved as v${newVersionNum}`);
+  }, [skillToEdit, showToast]);
+
+  const handleTogglePinSkill = useCallback((id) => {
+    setSkills((prev) => prev.map((s) => s.id === id ? { ...s, isPinned: !s.isPinned } : s));
+    setSelectedSkill((prev) => prev?.id === id ? { ...prev, isPinned: !prev.isPinned } : prev);
+  }, []);
+
+  const requestDeleteSkill = useCallback((skill) => {
+    setConfirmModalData({
+      isOpen: true,
+      title: 'Delete Skill',
+      message: `Are you sure you want to delete "${skill.title}"?`,
+      onConfirm: () => {
+        setSkills((prev) => prev.filter((s) => s.id !== skill.id));
+        setVersions((prev) => prev.filter((v) => !(v.entityType === 'skill' && v.entityId === skill.id)));
+        if (selectedSkill?.id === skill.id) setSelectedSkill(null);
+        setConfirmModalData({ isOpen: false, title: '', message: '' });
+        showToast('Skill deleted');
+      },
+    });
+  }, [selectedSkill, showToast]);
 
   // Creations
   const handleCreateFolder = ({ name, color }) => {
@@ -1122,7 +1461,7 @@ function AppMain() {
     if (promptToEdit) {
       const newVersionNum = promptToEdit.currentVersion + 1;
       const updatedPrompt = { ...promptToEdit, title: data.title, content: data.content, tags: data.tags, colorLabel: data.colorLabel, currentVersion: newVersionNum, lastUpdated: timestamp };
-      const newVersionRecord = { id: generateId('v'), promptId: promptToEdit.id, versionNum: newVersionNum, timestamp, changeNote: data.changeNote, changeReason: data.changeReason, content: data.content };
+      const newVersionRecord = { id: generateId('v'), entityType: 'prompt', entityId: promptToEdit.id, promptId: promptToEdit.id, versionNum: newVersionNum, timestamp, changeNote: data.changeNote, changeReason: data.changeReason, content: data.content };
 
       setPrompts(prompts.map(p => p.id === promptToEdit.id ? updatedPrompt : p));
       setVersions([...versions, newVersionRecord]);
@@ -1131,7 +1470,7 @@ function AppMain() {
     } else {
       const promptId = generateId('p');
       const newPrompt = { id: promptId, folderId: activeFolderId, title: data.title, content: data.content, tags: data.tags, colorLabel: data.colorLabel, isPinned: false, currentVersion: 1, lastUpdated: timestamp };
-      const initialVersion = { id: generateId('v'), promptId, versionNum: 1, timestamp, changeNote: 'Initial prompt creation.', changeReason: 'Initial setup.', content: data.content };
+      const initialVersion = { id: generateId('v'), entityType: 'prompt', entityId: promptId, promptId, versionNum: 1, timestamp, changeNote: 'Initial prompt creation.', changeReason: 'Initial setup.', content: data.content };
 
       setPrompts([...prompts, newPrompt]);
       setVersions([...versions, initialVersion]);
@@ -1145,7 +1484,7 @@ function AppMain() {
     const timestamp = new Date().toISOString();
     const newVersionNum = prompt.currentVersion + 1;
     const updatedPrompt = { ...prompt, content: oldVersionData.content, currentVersion: newVersionNum, lastUpdated: timestamp };
-    const newVersionRecord = { id: generateId('v'), promptId: prompt.id, versionNum: newVersionNum, timestamp, changeNote: `Restored from v${oldVersionData.versionNum}`, changeReason: 'Restored previous state to recover older functionality.', content: oldVersionData.content };
+    const newVersionRecord = { id: generateId('v'), entityType: 'prompt', entityId: prompt.id, promptId: prompt.id, versionNum: newVersionNum, timestamp, changeNote: `Restored from v${oldVersionData.versionNum}`, changeReason: 'Restored previous state to recover older functionality.', content: oldVersionData.content };
 
     setPrompts(prompts.map(p => p.id === prompt.id ? updatedPrompt : p));
     setVersions([...versions, newVersionRecord]);
@@ -1218,9 +1557,34 @@ function AppMain() {
           {createModalType === 'folder' && <CreateFolderModal onClose={() => setCreateModalType(null)} onSave={handleCreateFolder} />}
           {(createModalType === 'image' || createModalType === 'link') && <CreateReferenceModal type={createModalType} onClose={() => setCreateModalType(null)} onSave={handleCreateReference} />}
           {(createModalType === 'prompt' || promptToEdit) && <EditPromptModal prompt={promptToEdit} onClose={() => { setCreateModalType(null); setPromptToEdit(null); }} onSave={handleSavePrompt} />}
+          {createModalType === 'sequence' && <CreateSequenceModal onClose={() => setCreateModalType(null)} onSave={handleCreateSequence} />}
+          {sequenceToEdit && <EditSequenceModal sequence={sequenceToEdit} prompts={prompts} onClose={() => setSequenceToEdit(null)} onSave={handleSaveSequence} />}
+          {createModalType === 'skill' && <CreateSkillModal onClose={() => setCreateModalType(null)} onSave={handleCreateSkill} />}
+          {skillToEdit && <EditSkillModal skill={skillToEdit} onClose={() => setSkillToEdit(null)} onSave={handleSaveSkill} showToast={showToast} />}
 
-          {/* App Content */}
-          {selectedPrompt ? (
+          {/* App Content — Detail views take full screen */}
+          {selectedSequence ? (
+            <SequenceDetailModal
+              selectedSequence={selectedSequence}
+              setSelectedSequence={setSelectedSequence}
+              prompts={prompts}
+              folders={folders}
+              versions={versions}
+              onEditRequest={(seq) => { setSequenceToEdit(seq); }}
+              onDeleteRequest={requestDeleteSequence}
+            />
+          ) : selectedSkill ? (
+            <SkillDetailModal
+              selectedSkill={selectedSkill}
+              setSelectedSkill={setSelectedSkill}
+              prompts={prompts}
+              sequences={sequences}
+              folders={folders}
+              versions={versions}
+              onEditRequest={(skill) => { setSkillToEdit(skill); }}
+              onDeleteRequest={requestDeleteSkill}
+            />
+          ) : selectedPrompt ? (
             <PromptDetailModal 
               selectedPrompt={selectedPrompt} setSelectedPrompt={setSelectedPrompt} handleCopy={handleCopy} 
               folders={folders} versions={versions} onTogglePin={handleTogglePin} onEditRequest={setPromptToEdit} 
@@ -1233,25 +1597,29 @@ function AppMain() {
                 isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} 
                 viewMode={viewMode} setViewMode={setViewMode} 
                 onOpenSettings={() => setIsSettingsOpen(true)}
+                activeContentType={activeContentType}
+                setActiveContentType={setActiveContentType}
               />
               <Breadcrumbs searchQuery={searchQuery} activeFolderId={activeFolderId} setActiveFolderId={setActiveFolderId} breadcrumbs={breadcrumbs} />
               
               <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4 pb-24 md:px-8 md:py-6" style={{ ...hideScrollbarStyle, paddingLeft: 'calc(var(--safe-left) + 16px)', paddingRight: 'calc(var(--safe-right) + 16px)', paddingBottom: 'calc(var(--safe-bottom) + 112px)' }}>
-                {(searchQuery && currentPrompts.length === 0 && currentFolders.length === 0 && currentReferences.length === 0) && (
+                {searchQuery && currentPrompts.length === 0 && currentFolders.length === 0 && currentReferences.length === 0 && currentSequences.length === 0 && currentSkills.length === 0 && (
                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
                      <Search size={48} strokeWidth={1} className="mb-4 text-slate-300 dark:text-slate-700" />
-                     <p>No results found for "{searchQuery}"</p>
+                     <p>No results found for &quot;{searchQuery}&quot;</p>
                    </div>
                 )}
                 
                 <FolderList currentFolders={currentFolders} setActiveFolderId={setActiveFolderId} searchQuery={searchQuery} onDeleteFolder={requestDeleteFolder} onDropPrompt={handleDropPrompt} viewMode={viewMode} />
                 <ReferenceList currentReferences={currentReferences} onDeleteReference={requestDeleteReference} onViewImage={setViewingImage} viewMode={viewMode} />
+                <SequenceList sequences={currentSequences} onClick={setSelectedSequence} onPin={handleTogglePinSequence} viewMode={viewMode} />
+                <SkillList skills={currentSkills} onClick={setSelectedSkill} onPin={handleTogglePinSkill} viewMode={viewMode} />
                 <PromptList currentPrompts={currentPrompts} searchQuery={searchQuery} setSelectedPrompt={setSelectedPrompt} handleCopy={handleCopy} onTogglePin={handleTogglePin} viewMode={viewMode} />
               </div>
 
               {/* Floating Action Menu */}
               {isFabOpen && (
-                <div className="absolute flex flex-col gap-3 z-20 max-w-[calc(100vw-32px)] items-end" style={{ right: 'max(16px, calc(var(--safe-right) + 8px))', bottom: 'calc(var(--safe-bottom) + 92px)' }}>
+                <div className="absolute flex flex-col gap-2 z-20 max-w-[calc(100vw-32px)] items-end" style={{ right: 'max(16px, calc(var(--safe-right) + 8px))', bottom: 'calc(var(--safe-bottom) + 92px)' }}>
                   <button data-testid="fab-create-link" onClick={() => { setCreateModalType('link'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors max-w-[min(82vw,280px)]">
                     Add Link Ref <ExternalLink size={18} />
                   </button>
@@ -1260,6 +1628,13 @@ function AppMain() {
                   </button>
                   <button data-testid="fab-create-folder" onClick={() => { setCreateModalType('folder'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors max-w-[min(82vw,280px)]">
                     Create Folder <Folder size={18} />
+                  </button>
+                  <div className="h-px w-full bg-slate-200 dark:bg-slate-700 my-0.5" />
+                  <button data-testid="fab-create-skill" onClick={() => { setCreateModalType('skill'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors max-w-[min(82vw,280px)]">
+                    Create Skill <BookOpen size={18} />
+                  </button>
+                  <button data-testid="fab-create-sequence" onClick={() => { setCreateModalType('sequence'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors max-w-[min(82vw,280px)]">
+                    Create Sequence <GitBranch size={18} />
                   </button>
                   <button data-testid="fab-create-prompt" onClick={() => { setCreateModalType('prompt'); setIsFabOpen(false); }} className="bg-white dark:bg-slate-800 px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-lime-600 dark:hover:text-lime-400 active:scale-95 border border-slate-100 dark:border-slate-700 transition-colors max-w-[min(82vw,280px)]">
                     Create Prompt <FileText size={18} />
