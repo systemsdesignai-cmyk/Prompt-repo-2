@@ -11,6 +11,8 @@
     "cap:sync": "npx cap sync android",
     "android:sync": "npx cap sync android",
     "android:build:debug": "cd android && ./gradlew assembleDebug",
+    "ios:sync": "npx cap sync ios",
+    "ios:build:debug": "xcodebuild -workspace ios/App/App.xcworkspace -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO",
     "test:viewport": "playwright test",
     "test:viewport:install": "playwright install chromium"
   },
@@ -19,6 +21,7 @@
     "@capacitor/app": "^7.0.2",
     "@capacitor/clipboard": "^7.0.2",
     "@capacitor/core": "^7.4.3",
+    "@capacitor/ios": "^7.4.3",
     "@capacitor/keyboard": "^7.0.3",
     "@capacitor/preferences": "^7.0.2",
     "@ionic/react": "^8.7.6",
