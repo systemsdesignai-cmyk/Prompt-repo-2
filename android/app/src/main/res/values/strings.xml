@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Prompt Repository</string>
+    <string name="title_activity_main">Prompt Repository</string>
+    <string name="package_name">ai.prompt.repository</string>
+    <string name="custom_url_scheme">ai.prompt.repository</string>
+</resources>
