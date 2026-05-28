@@ -662,6 +662,7 @@ export const SequenceDetailModal = ({
   folders, versions, onEditRequest, onDeleteRequest, handleCopy,
 }) => {
   const [activeTab, setActiveTab] = useState('steps');
+  const [expandedStepId, setExpandedStepId] = useState(null);
 
   const seqVersions = versions
     .filter((v) => v.entityType === 'sequence' && v.entityId === selectedSequence.id)
@@ -770,6 +771,7 @@ export const SequenceDetailModal = ({
                     {steps.map((step) => {
                       const linked = step.promptMode === 'linked' ? prompts.find((p) => p.id === step.linkedPromptId) : null;
                       const promptPreview = step.promptMode === 'inline' ? step.inlinePrompt : linked?.content;
+                      const isExpanded = expandedStepId === step.id;
                       return (
                         <div key={step.id} className="flex gap-4">
                           <div className="flex-shrink-0">
@@ -778,7 +780,16 @@ export const SequenceDetailModal = ({
                             </div>
                           </div>
                           <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm min-w-0 mb-1">
-                            <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-1">{step.title || `Step ${step.stepNumber}`}</h4>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{step.title || `Step ${step.stepNumber}`}</h4>
+                              <button
+                                onClick={() => setExpandedStepId(isExpanded ? null : step.id)}
+                                className="flex-shrink-0 p-1.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                title={isExpanded ? "Collapse" : "Expand & Edit"}
+                              >
+                                {isExpanded ? <ChevronUp size={18} /> : <Edit2 size={18} />}
+                              </button>
+                            </div>
                             {step.promptMode === 'linked' && linked && (
                               <div className="text-xs text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1">
                                 <LinkIcon size={10} className="flex-shrink-0" />
@@ -793,10 +804,10 @@ export const SequenceDetailModal = ({
                                 </div>
                                 <button
                                   onClick={() => handleCopy(promptPreview)}
-                                  className="absolute top-1 right-1 p-1 bg-lime-500 hover:bg-lime-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                  className="absolute top-1 right-1 p-1.5 bg-lime-400 hover:bg-lime-500 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 z-10 font-semibold"
                                   title="Copy prompt"
                                 >
-                                  <Copy size={14} />
+                                  <Copy size={16} />
                                 </button>
                               </div>
                             )}
@@ -809,6 +820,17 @@ export const SequenceDetailModal = ({
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                 <span className="font-semibold text-slate-700 dark:text-slate-300">Notes: </span>{step.notes}
                               </p>
+                            )}
+                            {isExpanded && (
+                              <div className="border-t border-slate-200 dark:border-slate-800 mt-3 pt-3">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-semibold uppercase">Edit Step</p>
+                                <button
+                                  onClick={() => onEditRequest(selectedSequence)}
+                                  className="w-full bg-lime-400 hover:bg-lime-500 dark:bg-lime-500 dark:hover:bg-lime-600 text-slate-900 dark:text-slate-900 font-semibold py-2 rounded-lg transition-colors text-sm"
+                                >
+                                  Open Full Editor
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -835,10 +857,10 @@ export const SequenceDetailModal = ({
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1 line-clamp-2">{p.content}</p>
                       <button
                         onClick={() => handleCopy(p.content)}
-                        className="absolute top-2 right-2 p-1 bg-lime-500 hover:bg-lime-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        className="absolute top-2 right-2 p-1.5 bg-lime-400 hover:bg-lime-500 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 z-10 font-semibold"
                         title="Copy prompt"
                       >
-                        <Copy size={14} />
+                        <Copy size={16} />
                       </button>
                     </div>
                   ))}
