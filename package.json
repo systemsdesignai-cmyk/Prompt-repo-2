@@ -11,6 +11,7 @@
     "cap:sync": "npx cap sync android",
     "android:sync": "npx cap sync android",
     "android:build:debug": "cd android && ./gradlew assembleDebug",
+    "android:build:release": "cd android && ./gradlew assembleRelease",
     "ios:sync": "npx cap sync ios",
     "ios:build:debug": "xcodebuild -workspace ios/App/App.xcworkspace -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO",
     "test:viewport": "playwright test",

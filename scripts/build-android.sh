@@ -18,8 +18,14 @@ elif command -v sdkmanager &> /dev/null || command -v adb &> /dev/null; then
 fi
 
 if [ "$ANDROID_SDK_FOUND" = true ]; then
-  npm run android:build:debug
+  # Determine build type (debug or release)
+  BUILD_TYPE="${BUILD_TYPE:-debug}"
+  
+  if [[ "$BUILD_TYPE" == "release" ]]; then
+    npm run android:build:release
+  else
+    npm run android:build:debug
+  fi
 else
-  echo "Android SDK not found. Skipping native debug build. Define ANDROID_HOME or set sdk.dir in android/local.properties to compile the APK."
+  echo "Android SDK not found. Skipping native build. Define ANDROID_HOME or set sdk.dir in android/local.properties to compile the APK."
 fi
-

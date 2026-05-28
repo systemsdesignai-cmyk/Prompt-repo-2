@@ -5,3 +5,5 @@ dist
 *.log
 test-results
 playwright-report
+prompt-repo.jks
+.keystore-base64
