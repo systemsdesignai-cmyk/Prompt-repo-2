@@ -1,0 +1,48 @@
+name: MCP Bundle
+
+on:
+  push:
+    tags: ["mcp-v*"]
+  workflow_dispatch:
+
+jobs:
+  build-mcp-bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build MCP bundle
+        run: npm run mcp:bundle
+
+      - name: Read bundle version
+        id: version
+        run: |
+          echo "version=$(node -p \"require('./apps/mcp-server/package.json').version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-repository-mcp-bundle
+          path: apps/mcp-server/dist/prompt-repository-mcp-${{ steps.version.outputs.version }}.mcpb
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/mcp-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/mcp-server/dist/prompt-repository-mcp-${{ steps.version.outputs.version }}.mcpb
+          name: Prompt Repository MCP ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

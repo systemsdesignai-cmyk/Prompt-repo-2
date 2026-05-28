@@ -5,7 +5,7 @@ on:
     branches: [main]
   push:
     branches: [main]
-    tags: ["v*"]
+    tags: ["mobile-v*"]
   workflow_dispatch:
 
 jobs:
@@ -53,7 +53,7 @@ jobs:
           fi
 
       - name: Decode Keystore
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/mobile-v')
         working-directory: apps/mobile
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_FILE }}" | base64 -d > android/app/prompt-repo.jks
@@ -61,8 +61,8 @@ jobs:
 
       - name: Build Android APK
         env:
-          BUILD_TYPE: ${{ startsWith(github.ref, 'refs/tags/v') && 'release' || 'debug' }}
-          KEYSTORE_PATH: ${{ startsWith(github.ref, 'refs/tags/v') && 'prompt-repo.jks' || '' }}
+          BUILD_TYPE: ${{ startsWith(github.ref, 'refs/tags/mobile-v') && 'release' || 'debug' }}
+          KEYSTORE_PATH: ${{ startsWith(github.ref, 'refs/tags/mobile-v') && 'prompt-repo.jks' || '' }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -73,7 +73,7 @@ jobs:
         id: locate_apk
         working-directory: apps/mobile
         run: |
-          if [[ "${{ startsWith(github.ref, 'refs/tags/v') }}" == "true" ]]; then
+          if [[ "${{ startsWith(github.ref, 'refs/tags/mobile-v') }}" == "true" ]]; then
             APK_PATH=$(find android/app/build/outputs/apk -name "app-release.apk" | head -n 1)
             APK_TYPE="release"
           else
@@ -93,7 +93,7 @@ jobs:
         id: rename_apk
         run: |
           VERSION_TAG="${GITHUB_REF_NAME}"
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+          if [[ "${GITHUB_REF}" == refs/tags/mobile-v* ]]; then
             FINAL_NAME="app-prompt-${VERSION_TAG}-signed.apk"
           else
             FINAL_NAME="app-prompt-${GITHUB_SHA::7}.apk"
@@ -109,11 +109,11 @@ jobs:
           path: ${{ steps.rename_apk.outputs.path }}
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/mobile-v')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.rename_apk.outputs.path }}
-          name: Prompt Repository ${{ github.ref_name }}
+          name: Prompt Repository Mobile ${{ github.ref_name }}
           draft: false
           prerelease: false
         env:

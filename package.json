@@ -20,7 +20,8 @@
     "ios:build:debug": "npm --workspace @prompt-repository/mobile run ios:build:debug",
     "test:viewport": "npm --workspace @prompt-repository/mobile run test:viewport",
     "test:viewport:install": "npm --workspace @prompt-repository/mobile run test:viewport:install",
-    "mcp:start": "npm --workspace @prompt-repository/mcp-server run start"
+    "mcp:start": "npm --workspace @prompt-repository/mcp-server run start",
+    "mcp:bundle": "npm --workspace @prompt-repository/mcp-server run bundle"
   },
   "devDependencies": {
     "turbo": "^2.5.8"

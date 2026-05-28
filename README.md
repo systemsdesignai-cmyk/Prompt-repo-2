@@ -4,6 +4,7 @@ Prompt Repository is a Turborepo monorepo with two tools:
 
 - `apps/mobile`: the Ionic/React + Capacitor mobile app.
 - `apps/mcp-server`: a stdio MCP server for automation clients.
+- `skills/prompt-repository`: a local-first Codex skill for prompt packs, reusable prompts, and agent workflow packaging.
 
 The mobile app is the user-facing prompt repository. It runs as a Vite web app during development and uses Capacitor to sync/build native Android and iOS projects.
 
@@ -15,6 +16,8 @@ The MCP server is a command-line process that reads JSON-RPC messages from stdin
 apps/
   mobile/      Ionic + Capacitor app
   mcp-server/  stdio MCP server
+skills/
+  prompt-repository/  Codex skill for prompt and skill packaging workflows
 ```
 
 ## Install
@@ -26,6 +29,20 @@ npm install
 ```
 
 The root package uses npm workspaces, so this installs dependencies for both tools.
+
+## Agent Skill
+
+The repository includes a skill-first package for agents that support local skills.
+
+Install from GitHub after the repository is published:
+
+```bash
+npx skills add <owner>/<repo> --skill prompt-repository
+```
+
+The skill lives at `skills/prompt-repository` and is grouped for `skills.sh` through `skills.sh.json`.
+
+The skill is the agent guidance layer. It tells compatible agents when to use Prompt Repository workflows, references, templates, and MCP tools.
 
 ## Common Commands
 
@@ -106,6 +123,16 @@ Equivalent workspace command:
 npm --workspace @prompt-repository/mcp-server run start
 ```
 
+Build a terminal-agent MCP bundle:
+
+```bash
+npm run mcp:bundle
+```
+
+That creates `apps/mcp-server/dist/prompt-repository-mcp-<version>.mcpb`, which is intended for terminal-based AI agent environments that support local MCP bundle registration.
+
+For terminal agents, the preferred path is to download the `.mcpb` asset from the GitHub Release created by the `MCP Bundle` workflow, then register it through that terminal agent's supported MCP configuration or install command.
+
 The server supports these JSON-RPC methods:
 
 - `initialize`: returns server metadata and tool capabilities.
@@ -115,6 +142,35 @@ The server supports these JSON-RPC methods:
 Available tools:
 
 - `health`: returns a text response confirming that the MCP server is running.
+- `search_prompts`: searches local prompt, prompt-pack, and skill files.
+- `create_prompt_pack`: creates a Markdown prompt-pack file.
+- `validate_prompt_pack`: validates prompt-pack metadata and recommended sections.
+- `install_skill`: returns the `npx skills add` command for a GitHub-hosted skill.
+- `publish_manifest`: writes a `skills.sh.json` marketplace grouping manifest.
+- `sync_repository`: summarizes local skill/MCP assets and install/bundle next steps.
+
+## Installing the Agent Setup
+
+The skill and MCP server use different install mechanisms today:
+
+```text
+Skill      -> npx skills add <owner>/<repo> --skill prompt-repository
+MCP server -> download the generated .mcpb bundle for a terminal AI agent
+```
+
+When the skill is already installed in a terminal-capable agent, that agent can help bootstrap the MCP bundle. The skill includes `scripts/download-mcp-bundle.mjs`, which downloads the latest `.mcpb` release asset after the user approves the download:
+
+```bash
+node scripts/download-mcp-bundle.mjs <owner> <repo> --output ~/Downloads
+```
+
+For users, the smoothest release flow is:
+
+1. Publish the repository on GitHub.
+2. Attach `apps/mcp-server/dist/prompt-repository-mcp-<version>.mcpb` to a GitHub Release.
+3. Put the skill install command and terminal-agent `.mcpb` download command next to each other in the release notes.
+
+There is not a universal one-command installer that registers both a local skill and an MCP bundle across every terminal agent. The MCP server includes an `install_skill` tool that can generate the correct skill install command, and `sync_repository` can report both the skill install command and MCP bundle path.
 
 Example smoke test:
 
@@ -132,3 +188,21 @@ GitHub Actions run from the monorepo root, then delegate app-specific work to `a
 
 - Android release workflow installs dependencies, validates the monorepo, runs viewport tests, syncs Capacitor, and builds the APK from `apps/mobile`.
 - iOS release workflows install dependencies, validate the monorepo, sync Capacitor from `apps/mobile`, and archive the Xcode workspace at `apps/mobile/ios/App/App.xcworkspace`.
+- Mobile releases use `mobile-v*` tags, for example `mobile-v1.2.0`.
+- MCP bundle releases use `mcp-v*` tags, for example `mcp-v0.3.0`.
+
+Create a mobile release:
+
+```bash
+git tag mobile-v1.2.0
+git push origin mobile-v1.2.0
+```
+
+Create an MCP release:
+
+```bash
+git tag mcp-v0.3.0
+git push origin mcp-v0.3.0
+```
+
+The simplest MCP setup path for terminal agents is to download the `.mcpb` asset from the `mcp-v*` GitHub Release, then register it using that terminal agent's documented MCP configuration or install command.

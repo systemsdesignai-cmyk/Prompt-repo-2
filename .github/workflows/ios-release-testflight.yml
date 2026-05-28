@@ -2,7 +2,7 @@ name: iOS Build & Release (TestFlight)
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["mobile-v*"]
   workflow_dispatch:
 
 jobs:

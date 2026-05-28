@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node src/index.js",
     "build": "node --check src/index.js && mkdir -p dist && touch dist/.buildcheck",
+    "bundle": "node scripts/pack-mcpb.mjs",
     "ci": "npm run build"
   },
   "engines": {

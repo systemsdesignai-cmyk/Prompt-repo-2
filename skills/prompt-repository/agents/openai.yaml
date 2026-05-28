@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prompt Repository"
+  short_description: "Manage prompt packs and agent skills"
+  default_prompt: "Use $prompt-repository to organize, package, or publish reusable prompts and agent skills."

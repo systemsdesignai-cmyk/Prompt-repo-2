@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "prompt-repository-mcp",
+  "display_name": "Prompt Repository MCP",
+  "version": "1.0.0",
+  "description": "Local MCP server for the Prompt Repository monorepo.",
+  "long_description": "A local stdio MCP server that exposes Prompt Repository tooling to compatible desktop clients. It is packaged as an MCP bundle so it can be installed locally with minimal setup.",
+  "author": {
+    "name": "Prompt Repository"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ]
+    }
+  },
+  "keywords": [
+    "prompt-repository",
+    "mcp",
+    "local",
+    "stdio"
+  ],
+  "license": "MIT",
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=22.0.0"
+    }
+  },
+  "tools_generated": true
+}

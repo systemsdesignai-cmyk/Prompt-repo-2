@@ -2,7 +2,7 @@ name: iOS Build & Release (Ad Hoc OTA)
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["mobile-v*"]
   workflow_dispatch:
 
 jobs:
@@ -112,7 +112,7 @@ jobs:
       - name: Determine Version and Tag
         id: get_version
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+          if [[ "${GITHUB_REF}" == refs/tags/mobile-v* ]]; then
             echo "tag_name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           else
             echo "tag_name=latest-adhoc" >> "$GITHUB_OUTPUT"
@@ -140,7 +140,7 @@ jobs:
         with:
           tag_name: ${{ steps.get_version.outputs.tag_name }}
           files: ${{ steps.rename_ipa.outputs.path }}
-          name: Prompt Repository ${{ steps.get_version.outputs.tag_name }}
+          name: Prompt Repository Mobile ${{ steps.get_version.outputs.tag_name }}
           draft: false
           prerelease: false
         env:
