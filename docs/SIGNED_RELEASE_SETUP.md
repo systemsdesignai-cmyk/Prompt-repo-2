@@ -91,16 +91,18 @@ git push origin v1.0.0
 3. **Users can now update** from your app if you implement in-app updates
 
 ### Alternative: Build Release Locally
-If you need to build a signed APK locally:
+If you need to build a signed APK locally, place your `prompt-repo.jks` in `android/app/` and run:
 
 ```bash
 BUILD_TYPE=release \
-KEYSTORE_PATH=android/prompt-repo.jks \
+KEYSTORE_PATH=prompt-repo.jks \
 KEYSTORE_PASSWORD=SecureStorePass123 \
 KEY_ALIAS=prompt-key \
 KEY_PASSWORD=SecureStorePass123 \
 ./scripts/build-android.sh
 ```
+
+Alternatively, if your keystore is elsewhere, provide the absolute path to `KEYSTORE_PATH`.
 
 APK will be at: `android/app/build/outputs/apk/release/app-release.apk`
 
