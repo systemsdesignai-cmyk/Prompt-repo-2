@@ -570,6 +570,7 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
   const [latestRelease, setLatestRelease] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState(null);
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
 
   const [githubToken, setGithubToken] = useState(syncConfig.githubToken || '');
   const [gistId, setGistId] = useState(syncConfig.gistId || '');
@@ -692,10 +693,38 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
     <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/70 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-[92vw] sm:max-w-sm p-5 shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-in-right max-h-[calc(100dvh-32px)] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">Settings</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">Settings</h3>
+            <button 
+              onClick={() => setShowSetupGuide(!showSetupGuide)}
+              className="p-1 text-slate-400 hover:text-lime-500 transition-colors"
+              title="Setup Guide"
+            >
+              <Info size={18} />
+            </button>
+          </div>
           <button onClick={onClose} className="p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"><X size={20}/></button>
         </div>
         
+        {showSetupGuide && (
+          <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 rounded-xl text-[11px] space-y-3 animate-fade-in shadow-sm">
+            <p className="font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1.5 uppercase tracking-wider">
+              <Info size={14} /> Setup Guidance
+            </p>
+            <div className="space-y-2 text-blue-700 dark:text-blue-400 leading-relaxed">
+              <p>• <span className="font-bold">Sync:</span> Create a GitHub Personal Access Token (PAT) with <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">gist</code> scope. Paste it below to enable cloud backup.</p>
+              <p>• <span className="font-bold">Updates:</span> Sign your releases with the same keystore to allow seamless updates from GitHub.</p>
+              <p>• <span className="font-bold">CI/CD:</span> Set <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">ANDROID_KEYSTORE_FILE</code> and secrets in GitHub to automate signed builds.</p>
+            </div>
+            <button 
+              onClick={() => setShowSetupGuide(false)}
+              className="w-full mt-1 py-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        )}
+
         <div className="space-y-6">
           <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
             <p className="text-xs font-bold text-slate-400 uppercase mb-2">App Information</p>
