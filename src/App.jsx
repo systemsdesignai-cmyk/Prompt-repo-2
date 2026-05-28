@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { IonApp } from '@ionic/react';
+import { Capacitor } from '@capacitor/core';
 import { Clipboard } from '@capacitor/clipboard';
 import { Preferences } from '@capacitor/preferences';
 import { App as CapApp } from '@capacitor/app';
@@ -629,41 +630,47 @@ const SettingsModal = ({ onClose }) => {
               <span className="text-slate-600 dark:text-slate-400">Current Version</span>
               <span className="font-mono font-bold text-slate-900 dark:text-white">{appInfo.version} ({appInfo.build})</span>
             </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Github size={14} className="text-slate-400" />
-              <p className="text-xs font-bold text-slate-400 uppercase">GitHub Release</p>
+            <div className="flex justify-between items-center text-sm mt-2">
+              <span className="text-slate-600 dark:text-slate-400">Platform</span>
+              <span className="font-mono font-bold text-slate-900 dark:text-white capitalize">{Capacitor.getPlatform()}</span>
             </div>
-            
-            {latestRelease ? (
-              <div className="bg-lime-50 dark:bg-lime-900/20 border border-lime-200 dark:border-lime-800 p-4 rounded-xl">
-                <p className="text-sm font-bold text-lime-700 dark:text-lime-400 mb-1">Update Available: {latestRelease.tag_name}</p>
-                <p className="text-[10px] text-lime-600 dark:text-lime-500 mb-4 line-clamp-2">{latestRelease.name || 'New version available on GitHub'}</p>
-                <button 
-                  onClick={downloadUpdate}
-                  className="w-full bg-lime-400 dark:bg-lime-500 text-slate-900 font-bold py-2.5 rounded-xl hover:bg-lime-500 dark:hover:bg-lime-400 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Download size={18} /> Download APK
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={checkForUpdate}
-                disabled={isChecking}
-                className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isChecking ? <RefreshCw size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-                {isChecking ? 'Check GitHub for Updates' : 'Check for Updates'}
-              </button>
-            )}
-            {error && <p className="text-center text-xs font-medium text-slate-500 dark:text-slate-400 mt-2">{error}</p>}
           </div>
 
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-            <p className="text-[10px] text-center text-slate-400">Updates are fetched directly from the GitHub repository releases.</p>
-          </div>
+          {Capacitor.getPlatform() !== 'web' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Github size={14} className="text-slate-400" />
+                <p className="text-xs font-bold text-slate-400 uppercase">GitHub Release</p>
+              </div>
+              
+              {latestRelease ? (
+                <div className="bg-lime-50 dark:bg-lime-900/20 border border-lime-200 dark:border-lime-800 p-4 rounded-xl">
+                  <p className="text-sm font-bold text-lime-700 dark:text-lime-400 mb-1">Update Available: {latestRelease.tag_name}</p>
+                  <p className="text-[10px] text-lime-600 dark:text-lime-500 mb-4 line-clamp-2">{latestRelease.name || 'New version available on GitHub'}</p>
+                  <button 
+                    onClick={downloadUpdate}
+                    className="w-full bg-lime-400 dark:bg-lime-500 text-slate-900 font-bold py-2.5 rounded-xl hover:bg-lime-500 dark:hover:bg-lime-400 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Download size={18} /> Download APK
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={checkForUpdate}
+                  disabled={isChecking}
+                  className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isChecking ? <RefreshCw size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                  {isChecking ? 'Check GitHub for Updates' : 'Check for Updates'}
+                </button>
+              )}
+              {error && <p className="text-center text-xs font-medium text-slate-500 dark:text-slate-400 mt-2">{error}</p>}
+              
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-[10px] text-center text-slate-400">Updates are fetched directly from the GitHub repository releases.</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
