@@ -177,6 +177,9 @@ const MOCK_SKILLS = [
 const APP_STATE_KEY = 'prompt_repository_state_v2';
 const GITHUB_TOKEN_KEY = 'gist-sync-token';
 const GIST_ID_KEY = 'gist-sync-id';
+const AUTO_SYNC_PUSH_KEY = 'gist-auto-sync-push';
+const AUTO_SYNC_PULL_ON_START_KEY = 'gist-auto-sync-pull-on-start';
+const AUTO_SYNC_DEBOUNCE_MS = 2500;
 
 const DEFAULT_APP_STATE = {
   settings: {
@@ -562,14 +565,16 @@ const EditPromptModal = ({ prompt, onClose, onSave }) => {
 };
 
 // --- MAIN VIEWS ---
-const SettingsModal = ({ onClose, appState, setAppState }) => {
+const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConfig }) => {
   const [appInfo, setAppInfo] = useState({ version: '...', build: '...' });
   const [latestRelease, setLatestRelease] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState(null);
 
-  const [githubToken, setGithubToken] = useState('');
-  const [gistId, setGistId] = useState('');
+  const [githubToken, setGithubToken] = useState(syncConfig.githubToken || '');
+  const [gistId, setGistId] = useState(syncConfig.gistId || '');
+  const [autoPushEnabled, setAutoPushEnabled] = useState(!!syncConfig.autoPushEnabled);
+  const [pullOnStartEnabled, setPullOnStartEnabled] = useState(!!syncConfig.pullOnStartEnabled);
   const [showToken, setShowToken] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState(null);
@@ -585,19 +590,15 @@ const SettingsModal = ({ onClose, appState, setAppState }) => {
         console.error('Failed to get app info:', err);
       }
     };
-    const getSyncData = async () => {
-      const { value: token } = await Preferences.get({ key: GITHUB_TOKEN_KEY });
-      const { value: id } = await Preferences.get({ key: GIST_ID_KEY });
-      if (token) setGithubToken(token);
-      if (id) setGistId(id);
-    };
     getInfo();
-    getSyncData();
   }, []);
 
   const handleSaveSyncSettings = async () => {
     await Preferences.set({ key: GITHUB_TOKEN_KEY, value: githubToken });
     await Preferences.set({ key: GIST_ID_KEY, value: gistId });
+    await Preferences.set({ key: AUTO_SYNC_PUSH_KEY, value: autoPushEnabled ? 'true' : 'false' });
+    await Preferences.set({ key: AUTO_SYNC_PULL_ON_START_KEY, value: pullOnStartEnabled ? 'true' : 'false' });
+    setSyncConfig({ githubToken, gistId, autoPushEnabled, pullOnStartEnabled });
     setSyncMsg({ type: 'success', text: 'Sync settings saved locally.' });
     setTimeout(() => setSyncMsg(null), 3000);
   };
@@ -617,6 +618,7 @@ const SettingsModal = ({ onClose, appState, setAppState }) => {
         const gist = await githubGistService.createGist(githubToken, appState);
         setGistId(gist.id);
         await Preferences.set({ key: GIST_ID_KEY, value: gist.id });
+        setSyncConfig((prev) => ({ ...prev, githubToken, gistId: gist.id }));
         setSyncMsg({ type: 'success', text: 'New Gist created and data pushed!' });
       }
     } catch (err) {
@@ -793,6 +795,33 @@ const SettingsModal = ({ onClose, appState, setAppState }) => {
                   {isSyncing ? <RefreshCw size={16} className="animate-spin" /> : <CloudDownload size={16} />}
                   Pull
                 </button>
+              </div>
+
+              <div className="space-y-2 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl p-3">
+                <label className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200">
+                  <input
+                    type="checkbox"
+                    className="mt-1 accent-lime-500"
+                    checked={autoPushEnabled}
+                    onChange={(e) => setAutoPushEnabled(e.target.checked)}
+                  />
+                  <span>
+                    <span className="block font-bold">Auto-push local changes</span>
+                    <span className="block text-[10px] text-slate-400 leading-tight">Uploads changes to the configured Gist after edits settle.</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200">
+                  <input
+                    type="checkbox"
+                    className="mt-1 accent-lime-500"
+                    checked={pullOnStartEnabled}
+                    onChange={(e) => setPullOnStartEnabled(e.target.checked)}
+                  />
+                  <span>
+                    <span className="block font-bold">Pull latest on launch</span>
+                    <span className="block text-[10px] text-slate-400 leading-tight">Restores the Gist copy when the app starts.</span>
+                  </span>
+                </label>
               </div>
 
               <button 
@@ -1226,14 +1255,58 @@ function AppMain() {
   const [skillToEdit, setSkillToEdit] = useState(null);
   const [confirmModalData, setConfirmModalData] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [viewingImage, setViewingImage] = useState(null);
+  const [syncConfig, setSyncConfig] = useState({
+    githubToken: '',
+    gistId: '',
+    autoPushEnabled: false,
+    pullOnStartEnabled: false,
+  });
+  const [autoSyncMsg, setAutoSyncMsg] = useState('');
+  const autoSyncTimerRef = useRef(null);
+  const lastCloudSnapshotRef = useRef('');
+  const isRemoteApplyRef = useRef(false);
 
   useEffect(() => {
     const hydrate = async () => {
       try {
-        const { value } = await Preferences.get({ key: APP_STATE_KEY });
+        const [
+          { value },
+          { value: token },
+          { value: gistId },
+          { value: autoPush },
+          { value: pullOnStart },
+        ] = await Promise.all([
+          Preferences.get({ key: APP_STATE_KEY }),
+          Preferences.get({ key: GITHUB_TOKEN_KEY }),
+          Preferences.get({ key: GIST_ID_KEY }),
+          Preferences.get({ key: AUTO_SYNC_PUSH_KEY }),
+          Preferences.get({ key: AUTO_SYNC_PULL_ON_START_KEY }),
+        ]);
+        const nextSyncConfig = {
+          githubToken: token || '',
+          gistId: gistId || '',
+          autoPushEnabled: autoPush === 'true',
+          pullOnStartEnabled: pullOnStart === 'true',
+        };
+        setSyncConfig(nextSyncConfig);
         const state = safeParseState(value);
+        lastCloudSnapshotRef.current = JSON.stringify(state || DEFAULT_APP_STATE);
         if (state) {
           setFullAppState(state);
+        }
+        if (nextSyncConfig.pullOnStartEnabled && nextSyncConfig.githubToken && nextSyncConfig.gistId) {
+          try {
+            const cloudState = await githubGistService.fetchGist(nextSyncConfig.gistId, nextSyncConfig.githubToken);
+            isRemoteApplyRef.current = true;
+            setFullAppState(cloudState);
+            lastCloudSnapshotRef.current = JSON.stringify(cloudState);
+            setAutoSyncMsg('Pulled latest cloud data');
+            setTimeout(() => setAutoSyncMsg(''), 3000);
+          } catch (err) {
+            console.error('Auto pull failed:', err);
+            setAutoSyncMsg('Auto pull failed');
+            setTimeout(() => setAutoSyncMsg(''), 3000);
+          }
         }
       } catch (err) {
         console.error('Failed to hydrate local state:', err);
@@ -1255,6 +1328,52 @@ function AppMain() {
     };
     persist();
   }, [isHydrated, currentAppState]);
+
+  useEffect(() => {
+    if (!isHydrated || !syncConfig.autoPushEnabled || !syncConfig.githubToken) return;
+
+    const snapshot = JSON.stringify(currentAppState);
+    if (snapshot === lastCloudSnapshotRef.current) {
+      isRemoteApplyRef.current = false;
+      return;
+    }
+
+    if (isRemoteApplyRef.current) {
+      isRemoteApplyRef.current = false;
+      return;
+    }
+
+    if (autoSyncTimerRef.current) {
+      clearTimeout(autoSyncTimerRef.current);
+    }
+
+    autoSyncTimerRef.current = setTimeout(async () => {
+      try {
+        if (syncConfig.gistId) {
+          await githubGistService.updateGist(syncConfig.gistId, syncConfig.githubToken, currentAppState);
+          lastCloudSnapshotRef.current = JSON.stringify(currentAppState);
+          setAutoSyncMsg('Auto-synced to Gist');
+        } else {
+          const gist = await githubGistService.createGist(syncConfig.githubToken, currentAppState);
+          await Preferences.set({ key: GIST_ID_KEY, value: gist.id });
+          setSyncConfig((prev) => ({ ...prev, gistId: gist.id }));
+          lastCloudSnapshotRef.current = JSON.stringify(currentAppState);
+          setAutoSyncMsg('Created Gist and auto-synced');
+        }
+      } catch (err) {
+        console.error('Auto sync failed:', err);
+        setAutoSyncMsg('Auto-sync failed');
+      } finally {
+        setTimeout(() => setAutoSyncMsg(''), 3000);
+      }
+    }, AUTO_SYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (autoSyncTimerRef.current) {
+        clearTimeout(autoSyncTimerRef.current);
+      }
+    };
+  }, [isHydrated, currentAppState, syncConfig]);
 
   // Data Filtering & Sorting
   const currentFolders = useMemo(() => {
@@ -1703,7 +1822,7 @@ function AppMain() {
       <div className="h-full bg-slate-200 dark:bg-slate-950 flex justify-center font-sans text-slate-900 dark:text-slate-100 transition-colors overflow-hidden">
         
         <div className="w-full max-w-4xl bg-slate-50 dark:bg-slate-900 h-full shadow-2xl relative flex flex-col overflow-hidden">
-          <Toast message={toastMsg} isVisible={!!toastMsg} />
+          <Toast message={toastMsg || autoSyncMsg} isVisible={!!toastMsg || !!autoSyncMsg} />
           <ConfirmModal {...confirmModalData} onCancel={() => setConfirmModalData({ isOpen: false, title: '', message: '' })} />
           <ImageViewerModal imageRef={viewingImage} onClose={() => setViewingImage(null)} />
 
@@ -1713,6 +1832,8 @@ function AppMain() {
             onClose={() => setIsSettingsOpen(false)} 
             appState={currentAppState}
             setAppState={setFullAppState}
+            syncConfig={syncConfig}
+            setSyncConfig={setSyncConfig}
           />
         )}
           {createModalType === 'folder' && <CreateFolderModal onClose={() => setCreateModalType(null)} onSave={handleCreateFolder} />}
