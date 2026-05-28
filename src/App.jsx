@@ -10,8 +10,10 @@ import {
   Check, X, Moon, Sun, Trash2, Edit2, AlertTriangle,
   Mic, MicOff, Pin, FilePlus, Camera, ExternalLink, Download,
   LayoutGrid, List, Settings, RefreshCw, Github,
-  GitBranch, BookOpen,
+  GitBranch, BookOpen, CloudUpload, CloudDownload, Key, Eye, EyeOff,
 } from 'lucide-react';
+
+import { githubGistService } from './githubGistService.js';
 
 import {
   CreateSkillModal, EditSkillModal, SkillDetailModal, SkillList,
@@ -173,6 +175,8 @@ const MOCK_SKILLS = [
 ];
 
 const APP_STATE_KEY = 'prompt_repository_state_v2';
+const GITHUB_TOKEN_KEY = 'gist-sync-token';
+const GIST_ID_KEY = 'gist-sync-id';
 
 const DEFAULT_APP_STATE = {
   settings: {
@@ -558,11 +562,17 @@ const EditPromptModal = ({ prompt, onClose, onSave }) => {
 };
 
 // --- MAIN VIEWS ---
-const SettingsModal = ({ onClose }) => {
+const SettingsModal = ({ onClose, appState, setAppState }) => {
   const [appInfo, setAppInfo] = useState({ version: '...', build: '...' });
   const [latestRelease, setLatestRelease] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState(null);
+
+  const [githubToken, setGithubToken] = useState('');
+  const [gistId, setGistId] = useState('');
+  const [showToken, setShowToken] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(null);
 
   const GITHUB_REPO = 'systemsdesignai-cmyk/Prompt-repo-2';
 
@@ -575,8 +585,68 @@ const SettingsModal = ({ onClose }) => {
         console.error('Failed to get app info:', err);
       }
     };
+    const getSyncData = async () => {
+      const { value: token } = await Preferences.get({ key: GITHUB_TOKEN_KEY });
+      const { value: id } = await Preferences.get({ key: GIST_ID_KEY });
+      if (token) setGithubToken(token);
+      if (id) setGistId(id);
+    };
     getInfo();
+    getSyncData();
   }, []);
+
+  const handleSaveSyncSettings = async () => {
+    await Preferences.set({ key: GITHUB_TOKEN_KEY, value: githubToken });
+    await Preferences.set({ key: GIST_ID_KEY, value: gistId });
+    setSyncMsg({ type: 'success', text: 'Sync settings saved locally.' });
+    setTimeout(() => setSyncMsg(null), 3000);
+  };
+
+  const handleCloudPush = async () => {
+    if (!githubToken) {
+      setSyncMsg({ type: 'error', text: 'GitHub Token required for sync.' });
+      return;
+    }
+    setIsSyncing(true);
+    setSyncMsg(null);
+    try {
+      if (gistId) {
+        await githubGistService.updateGist(gistId, githubToken, appState);
+        setSyncMsg({ type: 'success', text: 'Data pushed to Gist successfully!' });
+      } else {
+        const gist = await githubGistService.createGist(githubToken, appState);
+        setGistId(gist.id);
+        await Preferences.set({ key: GIST_ID_KEY, value: gist.id });
+        setSyncMsg({ type: 'success', text: 'New Gist created and data pushed!' });
+      }
+    } catch (err) {
+      console.error('Sync push failed:', err);
+      setSyncMsg({ type: 'error', text: `Push failed: ${err.message}` });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleCloudPull = async () => {
+    if (!githubToken || !gistId) {
+      setSyncMsg({ type: 'error', text: 'Token and Gist ID required to pull.' });
+      return;
+    }
+    if (!window.confirm('Pulling from cloud will overwrite your local data. Continue?')) return;
+    
+    setIsSyncing(true);
+    setSyncMsg(null);
+    try {
+      const data = await githubGistService.fetchGist(gistId, githubToken);
+      setAppState(data);
+      setSyncMsg({ type: 'success', text: 'Data pulled and restored successfully!' });
+    } catch (err) {
+      console.error('Sync pull failed:', err);
+      setSyncMsg({ type: 'error', text: `Pull failed: ${err.message}` });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const checkForUpdate = async () => {
     // TODO: If this repo remains private, implement a secure proxy (e.g. Cloudflare Worker)
@@ -671,6 +741,77 @@ const SettingsModal = ({ onClose }) => {
               </div>
             </div>
           )}
+
+          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+            <div className="flex items-center gap-2">
+              <CloudUpload size={16} className="text-slate-400" />
+              <p className="text-xs font-bold text-slate-400 uppercase">Gist Cloud Sync</p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <Key size={14} />
+                </div>
+                <input
+                  type={showToken ? 'text' : 'password'}
+                  placeholder="GitHub Personal Access Token"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-lime-500/20"
+                  value={githubToken}
+                  onChange={(e) => setGithubToken(e.target.value)}
+                />
+                <button 
+                  onClick={() => setShowToken(!showToken)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400"
+                >
+                  {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+
+              <input
+                type="text"
+                placeholder="Gist ID (leave empty to create new)"
+                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-lime-500/20"
+                value={gistId}
+                onChange={(e) => setGistId(e.target.value)}
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={handleCloudPush}
+                  disabled={isSyncing}
+                  className="flex items-center justify-center gap-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold py-2.5 rounded-xl text-sm active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isSyncing ? <RefreshCw size={16} className="animate-spin" /> : <CloudUpload size={16} />}
+                  Push
+                </button>
+                <button 
+                  onClick={handleCloudPull}
+                  disabled={isSyncing}
+                  className="flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold py-2.5 rounded-xl text-sm active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isSyncing ? <RefreshCw size={16} className="animate-spin" /> : <CloudDownload size={16} />}
+                  Pull
+                </button>
+              </div>
+
+              <button 
+                onClick={handleSaveSyncSettings}
+                className="w-full text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium"
+              >
+                Save Settings Only
+              </button>
+
+              {syncMsg && (
+                <p className={`text-center text-[10px] font-bold ${syncMsg.type === 'error' ? 'text-red-500' : 'text-lime-600'}`}>
+                  {syncMsg.text}
+                </p>
+              )}
+            </div>
+            <p className="text-[10px] text-center text-slate-400 leading-tight">
+              Synchronize your data across devices using a private GitHub Gist. Requires a GitHub token with 'gist' scope.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -1044,6 +1185,33 @@ function AppMain() {
   const [searchQuery, setSearchQuery] = useState(DEFAULT_APP_STATE.uiState.searchQuery);
   const [activeContentType, setActiveContentType] = useState(DEFAULT_APP_STATE.uiState.activeContentType);
 
+  // Helper to set all app state at once (used for Pull)
+  const setFullAppState = useCallback((state) => {
+    if (!state) return;
+    setIsDarkMode(!!state.settings?.isDarkMode);
+    setViewMode(state.settings?.viewMode === 'grid' ? 'grid' : 'list');
+    setFolders(state.folders || []);
+    setPrompts(state.prompts || []);
+    setVersions(state.versions || []);
+    setReferences(state.references || []);
+    setSequences(state.sequences || []);
+    setSkills(state.skills || []);
+    setActiveFolderId(state.uiState?.activeFolderId ?? null);
+    setSearchQuery(state.uiState?.searchQuery ?? '');
+    setActiveContentType(state.uiState?.activeContentType ?? 'all');
+  }, []);
+
+  const currentAppState = useMemo(() => ({
+    settings: { isDarkMode, viewMode },
+    folders,
+    prompts,
+    versions,
+    references,
+    sequences,
+    skills,
+    uiState: { activeFolderId, searchQuery, activeContentType },
+  }), [isDarkMode, viewMode, folders, prompts, versions, references, sequences, skills, activeFolderId, searchQuery, activeContentType]);
+
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [selectedSequence, setSelectedSequence] = useState(null);
   const [selectedSkill, setSelectedSkill] = useState(null);
@@ -1065,17 +1233,7 @@ function AppMain() {
         const { value } = await Preferences.get({ key: APP_STATE_KEY });
         const state = safeParseState(value);
         if (state) {
-          setIsDarkMode(!!state.settings?.isDarkMode);
-          setViewMode(state.settings?.viewMode === 'grid' ? 'grid' : 'list');
-          setFolders(state.folders);
-          setPrompts(state.prompts);
-          setVersions(state.versions);
-          setReferences(state.references);
-          setSequences(state.sequences);
-          setSkills(state.skills);
-          setActiveFolderId(state.uiState?.activeFolderId ?? null);
-          setSearchQuery(state.uiState?.searchQuery ?? '');
-          setActiveContentType(state.uiState?.activeContentType ?? 'all');
+          setFullAppState(state);
         }
       } catch (err) {
         console.error('Failed to hydrate local state:', err);
@@ -1084,29 +1242,19 @@ function AppMain() {
       }
     };
     hydrate();
-  }, []);
+  }, [setFullAppState]);
 
   useEffect(() => {
     if (!isHydrated) return;
     const persist = async () => {
-      const nextState = {
-        settings: { isDarkMode, viewMode },
-        folders,
-        prompts,
-        versions,
-        references,
-        sequences,
-        skills,
-        uiState: { activeFolderId, searchQuery, activeContentType },
-      };
       try {
-        await Preferences.set({ key: APP_STATE_KEY, value: JSON.stringify(nextState) });
+        await Preferences.set({ key: APP_STATE_KEY, value: JSON.stringify(currentAppState) });
       } catch (err) {
         console.error('Failed to persist local state:', err);
       }
     };
     persist();
-  }, [isHydrated, isDarkMode, viewMode, folders, prompts, versions, references, sequences, skills, activeFolderId, searchQuery, activeContentType]);
+  }, [isHydrated, currentAppState]);
 
   // Data Filtering & Sorting
   const currentFolders = useMemo(() => {
@@ -1560,7 +1708,13 @@ function AppMain() {
           <ImageViewerModal imageRef={viewingImage} onClose={() => setViewingImage(null)} />
 
           {/* Modals */}
-          {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+          {isSettingsOpen && (
+          <SettingsModal 
+            onClose={() => setIsSettingsOpen(false)} 
+            appState={currentAppState}
+            setAppState={setFullAppState}
+          />
+        )}
           {createModalType === 'folder' && <CreateFolderModal onClose={() => setCreateModalType(null)} onSave={handleCreateFolder} />}
           {(createModalType === 'image' || createModalType === 'link') && <CreateReferenceModal type={createModalType} onClose={() => setCreateModalType(null)} onSave={handleCreateReference} />}
           {(createModalType === 'prompt' || promptToEdit) && <EditPromptModal prompt={promptToEdit} onClose={() => { setCreateModalType(null); setPromptToEdit(null); }} onSave={handleSavePrompt} />}
