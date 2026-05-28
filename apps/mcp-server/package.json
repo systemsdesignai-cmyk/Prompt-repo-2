@@ -1,0 +1,17 @@
+{
+  "name": "@prompt-repository/mcp-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "prompt-repository-mcp": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "build": "node --check src/index.js && mkdir -p dist && touch dist/.buildcheck",
+    "ci": "npm run build"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

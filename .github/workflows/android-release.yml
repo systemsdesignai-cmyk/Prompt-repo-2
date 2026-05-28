@@ -46,6 +46,7 @@ jobs:
         run: npm run test:viewport
 
       - name: Ensure Android platform exists
+        working-directory: apps/mobile
         run: |
           if [ ! -d "android/app" ]; then
             npx cap add android
@@ -53,6 +54,7 @@ jobs:
 
       - name: Decode Keystore
         if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: apps/mobile
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_FILE }}" | base64 -d > android/app/prompt-repo.jks
           ls -lh android/app/prompt-repo.jks
@@ -64,10 +66,12 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        working-directory: apps/mobile
         run: ./scripts/build-android.sh
 
       - name: Locate APK
         id: locate_apk
+        working-directory: apps/mobile
         run: |
           if [[ "${{ startsWith(github.ref, 'refs/tags/v') }}" == "true" ]]; then
             APK_PATH=$(find android/app/build/outputs/apk -name "app-release.apk" | head -n 1)
@@ -94,7 +98,7 @@ jobs:
           else
             FINAL_NAME="app-prompt-${GITHUB_SHA::7}.apk"
           fi
-          cp "${{ steps.locate_apk.outputs.path }}" "./${FINAL_NAME}"
+          cp "apps/mobile/${{ steps.locate_apk.outputs.path }}" "./${FINAL_NAME}"
           echo "path=./${FINAL_NAME}" >> "$GITHUB_OUTPUT"
           echo "Final APK name: ${FINAL_NAME}"
 

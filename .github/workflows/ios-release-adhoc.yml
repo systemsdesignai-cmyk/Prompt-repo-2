@@ -34,6 +34,7 @@ jobs:
         run: npm run ci
 
       - name: Build Web Assets and Sync Capacitor
+        working-directory: apps/mobile
         run: ./scripts/build-ios.sh
 
       - name: Install Apple Certificate and Provisioning Profile
@@ -93,7 +94,7 @@ jobs:
 
       - name: Build Archive
         run: |
-          xcodebuild -workspace ios/App/App.xcworkspace \
+          xcodebuild -workspace apps/mobile/ios/App/App.xcworkspace \
             -scheme App \
             -sdk iphoneos \
             -configuration Release \

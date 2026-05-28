@@ -1,6 +1,0 @@
-{
-	"appId": "ai.prompt.repository",
-	"appName": "Prompt Repository",
-	"webDir": "dist",
-	"bundledWebRuntime": false
-}

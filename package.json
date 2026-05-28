@@ -1,48 +1,31 @@
 {
-  "name": "prompt-repository",
+  "name": "prompt-repository-monorepo",
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "packageManager": "npm@11.9.0",
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "ci": "npm run build",
-    "cap:sync": "npx cap sync android",
-    "android:sync": "npx cap sync android",
-    "android:build:debug": "cd android && ./gradlew assembleDebug",
-    "android:build:release": "cd android && ./gradlew assembleRelease",
-    "ios:sync": "npx cap sync ios",
-    "ios:build:debug": "xcodebuild -workspace ios/App/App.xcworkspace -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO",
-    "test:viewport": "playwright test",
-    "test:viewport:install": "playwright install chromium"
-  },
-  "dependencies": {
-    "@capacitor/android": "^7.4.3",
-    "@capacitor/app": "^7.0.2",
-    "@capacitor/clipboard": "^7.0.2",
-    "@capacitor/core": "^7.4.3",
-    "@capacitor/ios": "^7.4.3",
-    "@capacitor/keyboard": "^7.0.3",
-    "@capacitor/preferences": "^7.0.2",
-    "@ionic/react": "^8.7.6",
-    "@ionic/react-router": "^8.7.6",
-    "ionicons": "^8.0.13",
-    "lucide-react": "^0.525.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "ci": "turbo run ci",
+    "preview": "npm --workspace @prompt-repository/mobile run preview",
+    "cap:sync": "npm --workspace @prompt-repository/mobile run cap:sync",
+    "android:sync": "npm --workspace @prompt-repository/mobile run android:sync",
+    "android:build:debug": "npm --workspace @prompt-repository/mobile run android:build:debug",
+    "android:build:release": "npm --workspace @prompt-repository/mobile run android:build:release",
+    "ios:sync": "npm --workspace @prompt-repository/mobile run ios:sync",
+    "ios:build:debug": "npm --workspace @prompt-repository/mobile run ios:build:debug",
+    "test:viewport": "npm --workspace @prompt-repository/mobile run test:viewport",
+    "test:viewport:install": "npm --workspace @prompt-repository/mobile run test:viewport:install",
+    "mcp:start": "npm --workspace @prompt-repository/mcp-server run start"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.4.3",
-    "@playwright/test": "^1.55.0",
-    "@tailwindcss/line-clamp": "^0.4.4",
-    "@types/react": "^18.3.23",
-    "@types/react-dom": "^18.3.7",
-    "@vitejs/plugin-react": "^4.7.0",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.9.3",
-    "vite": "^5.4.21"
+    "turbo": "^2.5.8"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
