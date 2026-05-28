@@ -1572,6 +1572,7 @@ function AppMain() {
               versions={versions}
               onEditRequest={(seq) => { setSequenceToEdit(seq); }}
               onDeleteRequest={requestDeleteSequence}
+              handleCopy={handleCopy}
             />
           ) : selectedSkill ? (
             <SkillDetailModal

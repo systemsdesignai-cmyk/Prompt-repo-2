@@ -659,7 +659,7 @@ export const EditSequenceModal = ({ sequence, prompts, onClose, onSave }) => {
 // --- SequenceDetailModal ---
 export const SequenceDetailModal = ({
   selectedSequence, setSelectedSequence, prompts,
-  folders, versions, onEditRequest, onDeleteRequest,
+  folders, versions, onEditRequest, onDeleteRequest, handleCopy,
 }) => {
   const [activeTab, setActiveTab] = useState('steps');
 
@@ -787,8 +787,17 @@ export const SequenceDetailModal = ({
                               </div>
                             )}
                             {promptPreview && (
-                              <div className="bg-slate-50 dark:bg-slate-950 rounded-lg p-2 text-xs text-slate-600 dark:text-slate-400 font-mono line-clamp-3 border border-slate-200 dark:border-slate-800 mb-2">
-                                {promptPreview}
+                              <div className="relative group">
+                                <div className="bg-slate-50 dark:bg-slate-950 rounded-lg p-2 text-xs text-slate-600 dark:text-slate-400 font-mono line-clamp-3 border border-slate-200 dark:border-slate-800 mb-2">
+                                  {promptPreview}
+                                </div>
+                                <button
+                                  onClick={() => handleCopy(promptPreview)}
+                                  className="absolute top-1 right-1 p-1 bg-lime-500 hover:bg-lime-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                  title="Copy prompt"
+                                >
+                                  <Copy size={14} />
+                                </button>
                               </div>
                             )}
                             {step.expectedOutput && (
@@ -820,10 +829,17 @@ export const SequenceDetailModal = ({
               ) : (
                 <div className="space-y-2">
                   {linkedStepPrompts.map(({ step, prompt: p }) => (
-                    <div key={step.id} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3">
+                    <div key={step.id} className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 relative group">
                       <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Step {step.stepNumber}</div>
                       <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{p.title}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1 line-clamp-2">{p.content}</p>
+                      <button
+                        onClick={() => handleCopy(p.content)}
+                        className="absolute top-2 right-2 p-1 bg-lime-500 hover:bg-lime-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        title="Copy prompt"
+                      >
+                        <Copy size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>
