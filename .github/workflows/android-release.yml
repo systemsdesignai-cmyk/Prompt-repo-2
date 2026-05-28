@@ -94,7 +94,9 @@ jobs:
         run: |
           VERSION_TAG="${GITHUB_REF_NAME}"
           if [[ "${GITHUB_REF}" == refs/tags/mobile-v* ]]; then
-            FINAL_NAME="app-prompt-${VERSION_TAG}-signed.apk"
+            # Strip 'mobile-' prefix from the tag (e.g., mobile-v1.0.0 -> v1.0.0)
+            CLEAN_TAG="${VERSION_TAG#mobile-}"
+            FINAL_NAME="app-prompt-${CLEAN_TAG}-signed.apk"
           else
             FINAL_NAME="app-prompt-${GITHUB_SHA::7}.apk"
           fi

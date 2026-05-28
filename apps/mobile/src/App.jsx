@@ -579,7 +579,7 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState(null);
 
-  const GITHUB_REPO = 'systemsdesignai-cmyk/Prompt-repo-2';
+  const GITHUB_REPO = 'sys-internal-tools/Prompt-repo-2';
 
   useEffect(() => {
     const getInfo = async () => {
@@ -661,9 +661,10 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
       if (!response.ok) throw new Error('Failed to fetch latest release');
       
       const data = await response.json();
-      const latestVersion = data.tag_name.replace('v', '');
+      // Remove 'mobile-' and 'v' prefixes to get just the version number (e.g., mobile-v1.0.0 -> 1.0.0)
+      const latestVersion = data.tag_name.replace('mobile-', '').replace('v', '');
       
-      // Basic version comparison (v1.0.0 vs 1.0.0)
+      // Basic version comparison
       if (latestVersion !== appInfo.version) {
         setLatestRelease(data);
       } else {
