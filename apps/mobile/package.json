@@ -22,15 +22,19 @@
     "@capacitor/app": "^7.0.2",
     "@capacitor/clipboard": "^7.0.2",
     "@capacitor/core": "^7.4.3",
+    "@capacitor/file-transfer": "^1.0.12",
+    "@capacitor/filesystem": "^7.1.8",
     "@capacitor/ios": "^7.4.3",
     "@capacitor/keyboard": "^7.0.3",
     "@capacitor/preferences": "^7.0.2",
+    "@capawesome-team/capacitor-file-opener": "^7.0.1",
     "@ionic/react": "^8.7.6",
     "@ionic/react-router": "^8.7.6",
     "ionicons": "^8.0.13",
     "lucide-react": "^0.525.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.3",

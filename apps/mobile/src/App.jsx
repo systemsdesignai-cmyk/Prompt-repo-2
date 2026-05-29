@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { IonApp } from '@ionic/react';
 import { Capacitor } from '@capacitor/core';
-import { Clipboard } from '@capacitor/clipboard';
+import { updateManager } from './services/updates/index.ts';
 import { Preferences } from '@capacitor/preferences';
 import { App as CapApp } from '@capacitor/app';
 import { 
@@ -570,6 +570,8 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
   const [latestRelease, setLatestRelease] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
 
   const [githubToken, setGithubToken] = useState(syncConfig.githubToken || '');
@@ -681,14 +683,23 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
     }
   };
 
-  const downloadUpdate = () => {
+  const downloadUpdate = async () => {
     if (!latestRelease) return;
     
-    // Find the APK asset in the release
-    const apkAsset = latestRelease.assets.find(asset => asset.name.endsWith('.apk'));
-    const downloadUrl = apkAsset ? apkAsset.browser_download_url : latestRelease.html_url;
-    
-    window.open(downloadUrl, '_blank');
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setError(null);
+
+    try {
+      await updateManager.handleUpdate(latestRelease, (percentage) => {
+        setDownloadProgress(percentage);
+      });
+      setIsDownloading(false);
+    } catch (err) {
+      console.error('Update failed:', err);
+      setError("Update failed. Please try again or visit the release page.");
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -766,12 +777,28 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
                 <div className="bg-lime-50 dark:bg-lime-900/20 border border-lime-200 dark:border-lime-800 p-4 rounded-xl">
                   <p className="text-sm font-bold text-lime-700 dark:text-lime-400 mb-1">Update Available: {latestRelease.tag_name}</p>
                   <p className="text-[10px] text-lime-600 dark:text-lime-500 mb-4 line-clamp-2">{latestRelease.name || 'New version available on GitHub'}</p>
-                  <button 
-                    onClick={downloadUpdate}
-                    className="w-full bg-lime-400 dark:bg-lime-500 text-slate-900 font-bold py-2.5 rounded-xl hover:bg-lime-500 dark:hover:bg-lime-400 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Download size={18} /> Download APK
-                  </button>
+                  
+                  {isDownloading ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-lime-600 dark:text-lime-400 uppercase">
+                        <span>Downloading Update...</span>
+                        <span>{downloadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-lime-200 dark:bg-lime-900/40 h-2 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-lime-500 h-full transition-all duration-300" 
+                          style={{ width: `${downloadProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={downloadUpdate}
+                      className="w-full bg-lime-400 dark:bg-lime-500 text-slate-900 font-bold py-2.5 rounded-xl hover:bg-lime-500 dark:hover:bg-lime-400 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Download size={18} /> Download APK
+                    </button>
+                  )}
                 </div>
               ) : (
                 <button 
