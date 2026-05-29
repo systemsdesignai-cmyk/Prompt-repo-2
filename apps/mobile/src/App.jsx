@@ -10,7 +10,7 @@ import {
   Check, X, Moon, Sun, Trash2, Edit2, AlertTriangle,
   Mic, MicOff, Pin, FilePlus, Camera, ExternalLink, Download,
   LayoutGrid, List, Settings, RefreshCw, Github,
-  GitBranch, BookOpen, CloudUpload, CloudDownload, Key, Eye, EyeOff,
+  GitBranch, BookOpen, CloudUpload, CloudDownload, Key, Eye, EyeOff, Info,
 } from 'lucide-react';
 
 import { githubGistService } from './githubGistService.js';
@@ -179,7 +179,7 @@ const GITHUB_TOKEN_KEY = 'gist-sync-token';
 const GIST_ID_KEY = 'gist-sync-id';
 const AUTO_SYNC_PUSH_KEY = 'gist-auto-sync-push';
 const AUTO_SYNC_PULL_ON_START_KEY = 'gist-auto-sync-pull-on-start';
-const AUTO_SYNC_DEBOUNCE_MS = 2500;
+const AUTO_SYNC_INTERVAL_KEY = 'gist-auto-sync-interval';
 
 const DEFAULT_APP_STATE = {
   settings: {
@@ -576,6 +576,7 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
   const [gistId, setGistId] = useState(syncConfig.gistId || '');
   const [autoPushEnabled, setAutoPushEnabled] = useState(!!syncConfig.autoPushEnabled);
   const [pullOnStartEnabled, setPullOnStartEnabled] = useState(!!syncConfig.pullOnStartEnabled);
+  const [autoSyncInterval, setAutoSyncInterval] = useState(syncConfig.autoSyncInterval || 30);
   const [showToken, setShowToken] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState(null);
@@ -599,7 +600,8 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
     await Preferences.set({ key: GIST_ID_KEY, value: gistId });
     await Preferences.set({ key: AUTO_SYNC_PUSH_KEY, value: autoPushEnabled ? 'true' : 'false' });
     await Preferences.set({ key: AUTO_SYNC_PULL_ON_START_KEY, value: pullOnStartEnabled ? 'true' : 'false' });
-    setSyncConfig({ githubToken, gistId, autoPushEnabled, pullOnStartEnabled });
+    await Preferences.set({ key: AUTO_SYNC_INTERVAL_KEY, value: autoSyncInterval.toString() });
+    setSyncConfig({ githubToken, gistId, autoPushEnabled, pullOnStartEnabled, autoSyncInterval });
     setSyncMsg({ type: 'success', text: 'Sync settings saved locally.' });
     setTimeout(() => setSyncMsg(null), 3000);
   };
@@ -709,18 +711,33 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
         {showSetupGuide && (
           <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 rounded-xl text-[11px] space-y-3 animate-fade-in shadow-sm">
             <p className="font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1.5 uppercase tracking-wider">
-              <Info size={14} /> Setup Guidance
+              <Info size={14} /> Gist Sync Guide
             </p>
-            <div className="space-y-2 text-blue-700 dark:text-blue-400 leading-relaxed">
-              <p>• <span className="font-bold">Sync:</span> Create a GitHub Personal Access Token (PAT) with <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">gist</code> scope. Paste it below to enable cloud backup.</p>
-              <p>• <span className="font-bold">Updates:</span> Sign your releases with the same keystore to allow seamless updates from GitHub.</p>
-              <p>• <span className="font-bold">CI/CD:</span> Set <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">ANDROID_KEYSTORE_FILE</code> and secrets in GitHub to automate signed builds.</p>
+            <div className="space-y-3 text-blue-700 dark:text-blue-400 leading-relaxed">
+              <div className="space-y-1">
+                <p className="font-bold underline">Step 1: Create GitHub Token</p>
+                <p>Go to GitHub Settings &gt; Developer Settings &gt; Personal Access Tokens (Tokens classic). Generate a new token with the <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-blue-800 dark:text-blue-200">gist</code> scope.</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold underline">Step 2: Configure App</p>
+                <p>Paste your Token in the field below and click "Save Sync Settings".</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold underline">Step 3: Initial Sync (Push)</p>
+                <p>Click "Push to Cloud". If you don't have a Gist yet, the app will create a private one for you and save its ID automatically.</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold underline">How it Works</p>
+                <p>• <span className="font-bold">Push:</span> Uploads your local prompts/skills to GitHub.</p>
+                <p>• <span className="font-bold">Pull:</span> Downloads data from GitHub to this device (overwrites local).</p>
+                <p>• <span className="font-bold">Auto-Sync:</span> If enabled, pushes changes whenever you edit a prompt.</p>
+              </div>
             </div>
             <button 
               onClick={() => setShowSetupGuide(false)}
               className="w-full mt-1 py-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors"
             >
-              Got it
+              Close Guide
             </button>
           </div>
         )}
@@ -852,6 +869,21 @@ const SettingsModal = ({ onClose, appState, setAppState, syncConfig, setSyncConf
                     <span className="block text-[10px] text-slate-400 leading-tight">Restores the Gist copy when the app starts.</span>
                   </span>
                 </label>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/50 mt-2">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 ml-1 tracking-wider">Sync Delay (seconds)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="1"
+                      className="flex-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-lime-500/20 text-slate-900 dark:text-slate-100"
+                      value={autoSyncInterval}
+                      onChange={(e) => setAutoSyncInterval(parseInt(e.target.value) || 0)}
+                    />
+                    <span className="text-xs text-slate-400 font-medium">sec</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1.5 ml-1 leading-tight">How long to wait after changes before pushing to GitHub.</p>
+                </div>
               </div>
 
               <button 
@@ -1290,6 +1322,7 @@ function AppMain() {
     gistId: '',
     autoPushEnabled: false,
     pullOnStartEnabled: false,
+    autoSyncInterval: 30,
   });
   const [autoSyncMsg, setAutoSyncMsg] = useState('');
   const autoSyncTimerRef = useRef(null);
@@ -1305,18 +1338,21 @@ function AppMain() {
           { value: gistId },
           { value: autoPush },
           { value: pullOnStart },
+          { value: interval },
         ] = await Promise.all([
           Preferences.get({ key: APP_STATE_KEY }),
           Preferences.get({ key: GITHUB_TOKEN_KEY }),
           Preferences.get({ key: GIST_ID_KEY }),
           Preferences.get({ key: AUTO_SYNC_PUSH_KEY }),
           Preferences.get({ key: AUTO_SYNC_PULL_ON_START_KEY }),
+          Preferences.get({ key: AUTO_SYNC_INTERVAL_KEY }),
         ]);
         const nextSyncConfig = {
           githubToken: token || '',
           gistId: gistId || '',
           autoPushEnabled: autoPush === 'true',
           pullOnStartEnabled: pullOnStart === 'true',
+          autoSyncInterval: interval ? parseInt(interval, 10) : 30,
         };
         setSyncConfig(nextSyncConfig);
         const state = safeParseState(value);
@@ -1396,7 +1432,7 @@ function AppMain() {
       } finally {
         setTimeout(() => setAutoSyncMsg(''), 3000);
       }
-    }, AUTO_SYNC_DEBOUNCE_MS);
+    }, (syncConfig.autoSyncInterval || 30) * 1000);
 
     return () => {
       if (autoSyncTimerRef.current) {
